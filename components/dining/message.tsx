@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react';
-import { IconOpenAI, IconUser } from '@/components/ui/icons'
+import { IconUser, IconUtensils } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { spinner } from './spinner'
 import { CodeBlock } from '../ui/codeblock'
@@ -10,8 +9,6 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import { StreamableValue } from 'ai/rsc'
 import { useStreamableText } from '@/lib/hooks/use-streamable-text'
-
-// Different types of message bubbles.
 
 export function UserMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -33,12 +30,12 @@ export function BotMessage({
   content: string | StreamableValue<string>
   className?: string
 }) {
-  const text = useStreamableText(content);
+  const text = useStreamableText(content)
 
   return (
     <div className={cn('group relative flex items-start md:-ml-12', className)}>
-      <div className="flex size-[24px] shrink-0 select-none items-center justify-center rounded-md border bg-primary text-primary-foreground shadow-sm">
-        <IconOpenAI />
+      <div className="flex size-[24px] shrink-0 select-none items-center justify-center rounded-md border bg-rose-500 text-rose-50 shadow-sm">
+        <IconUtensils />
       </div>
       <div className="ml-4 flex-1 space-y-2 overflow-hidden px-1">
         <MemoizedReactMarkdown
@@ -52,7 +49,7 @@ export function BotMessage({
               if (children.length) {
                 if (children[0] == '▍') {
                   return (
-                    <span className="mt-1 animate-pulse cursor-default">▍</span>
+                    <span className="mt-1 animate-pulse cursor-default text-rose-500">▍</span>
                   )
                 }
 
@@ -65,7 +62,6 @@ export function BotMessage({
                 return (
                   <code className={className} {...props}>
                     {children}
-                    
                   </code>
                 )
               }
@@ -99,11 +95,11 @@ export function BotCard({
     <div className="group relative flex items-start md:-ml-12">
       <div
         className={cn(
-          'flex size-[24px] shrink-0 select-none items-center justify-center rounded-md border bg-primary text-primary-foreground shadow-sm',
+          'flex size-[24px] shrink-0 select-none items-center justify-center rounded-md border bg-rose-500 text-rose-50 shadow-sm',
           !showAvatar && 'invisible'
         )}
       >
-        <IconOpenAI />
+        <IconUtensils />
       </div>
       <div className="ml-4 flex-1 px-1">{children}</div>
     </div>
@@ -112,12 +108,8 @@ export function BotCard({
 
 export function SystemMessage({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className={
-        'mt-2 flex items-center justify-center gap-2 text-xs text-gray-500'
-      }
-    >
-      <div className={'max-w-[600px] flex-initial p-2'}>{children}</div>
+    <div className="mt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+      <div className={'max-w-[600px] flex-initial p-2 text-center'}>{children}</div>
     </div>
   )
 }
@@ -125,11 +117,12 @@ export function SystemMessage({ children }: { children: React.ReactNode }) {
 export function SpinnerMessage() {
   return (
     <div className="group relative flex items-start md:-ml-12">
-      <div className="flex size-[24px] shrink-0 select-none items-center justify-center rounded-md border bg-primary text-primary-foreground shadow-sm">
-        <IconOpenAI />
+      <div className="flex size-[24px] shrink-0 select-none items-center justify-center rounded-md border bg-rose-500 text-rose-50 shadow-sm">
+        <IconUtensils />
       </div>
-      <div className="ml-4 h-[24px] flex flex-row items-center flex-1 space-y-2 overflow-hidden px-1">
+      <div className="ml-4 h-[24px] flex flex-row items-center flex-1 space-y-2 overflow-hidden px-1 text-sm text-muted-foreground">
         {spinner}
+        <span className="ml-2 animate-pulse">Setting the table...</span>
       </div>
     </div>
   )

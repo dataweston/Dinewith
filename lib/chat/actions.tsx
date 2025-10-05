@@ -15,24 +15,19 @@ import {
   BotCard,
   BotMessage,
   SystemMessage,
-  Stock,
-  Purchase
-} from '@/components/stocks'
-
+  Matches,
+  Restaurant,
+  Itinerary,
+  Booking,
+  UserMessage,
+  SpinnerMessage
+} from '@/components/dining'
+import { MatchesSkeleton } from '@/components/dining/matches-skeleton'
+import { RestaurantSkeleton } from '@/components/dining/restaurant-skeleton'
+import { ItinerarySkeleton } from '@/components/dining/itinerary-skeleton'
 import { z } from 'zod'
-import { EventsSkeleton } from '@/components/stocks/events-skeleton'
-import { Events } from '@/components/stocks/event'
-import { StocksSkeleton } from '@/components/stocks/stocks-skeleton'
-import { Stocks } from '@/components/stocks/stocks'
-import { StockSkeleton } from '@/components/stocks/stock-skeleton'
-import {
-  formatNumber,
-  runAsyncFnWithoutBlocking,
-  sleep,
-  nanoid
-} from '@/lib/utils'
+import { runAsyncFnWithoutBlocking, sleep, nanoid } from '@/lib/utils'
 import { saveChat } from '@/app/actions'
-import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat } from '@/lib/types'
 import { auth } from '@/auth'
 import analytics from '@/app/analyticsInstance'
@@ -41,16 +36,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || ''
 })
 
-async function confirmPurchase(symbol: string, price: number, amount: number) {
+async function confirmReservation(
+  restaurant: string,
+  date: string,
+  time: string,
+  partySize: number
+) {
   'use server'
 
   const aiState = getMutableAIState<typeof AI>()
 
-  const purchasing = createStreamableUI(
+  const reservation = createStreamableUI(
     <div className="inline-flex items-start gap-1 md:items-center">
       {spinner}
       <p className="mb-2">
-        Purchasing {amount} ${symbol}...
+        Checking {restaurant} for {partySize} guests...
       </p>
     </div>
   )
@@ -58,42 +58,43 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
   const systemMessage = createStreamableUI(null)
 
   runAsyncFnWithoutBlocking(async () => {
-    await sleep(1000)
+    await sleep(1200)
 
-    purchasing.update(
+    reservation.update(
       <div className="inline-flex items-start gap-1 md:items-center">
         {spinner}
-        <p className="mb-2">
-          Purchasing {amount} ${symbol}... working on it...
-        </p>
+        <p className="mb-2">Coordinating with the host team…</p>
       </div>
     )
 
-    await sleep(1000)
+    await sleep(1200)
 
-    purchasing.done(
+    reservation.done(
       <div>
-        <p className="mb-2">
-          You have successfully purchased {amount} ${symbol}. Total cost:{' '}
-          {formatNumber(amount * price)}
+        <p className="mb-2 font-medium text-foreground">
+          {restaurant} is ready for {partySize} guests at {time}.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          A confirmation email is on its way with arrival details.
         </p>
       </div>
     )
-      // send purchase event to Segment
-      analytics.track({
-        userId: "123",
-        event: "Stock Purchased",
-        properties: {
-          stock_symbol: symbol,
-          amount: amount,
-          total: amount*price
-        }
-      });
+
+    analytics.track({
+      userId: '123',
+      event: 'Reservation Confirmed',
+      properties: {
+        restaurant,
+        date,
+        time,
+        partySize,
+        conversationId: aiState.get().chatId
+      }
+    })
 
     systemMessage.done(
       <SystemMessage>
-        You have purchased {amount} shares of {symbol} at ${price}. Total cost ={' '}
-        {formatNumber(amount * price)}.
+        Reservation confirmed for {partySize} guests at {restaurant} on {date} at {time}.
       </SystemMessage>
     )
 
@@ -104,27 +105,26 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
         {
           id: nanoid(),
           role: 'function',
-          name: 'showStockPurchase',
+          name: 'showBookingOptions',
           content: JSON.stringify({
-            name: symbol,
-            price,
-            defaultAmount: amount,
-            status: 'completed'
+            restaurant,
+            date,
+            time,
+            partySize,
+            status: 'confirmed'
           })
         },
         {
           id: nanoid(),
           role: 'system',
-          content: `[User has purchased ${amount} shares of ${symbol} at ${price}. Total cost = ${
-            amount * price
-          }]`
+          content: `[Reservation confirmed for ${partySize} guests at ${restaurant} on ${date} at ${time}]`
         }
       ]
     })
   })
 
   return {
-    purchasingUI: purchasing.value,
+    bookingUI: reservation.value,
     newMessage: {
       id: nanoid(),
       display: systemMessage.value
@@ -149,8 +149,10 @@ async function submitUserMessage(content: string) {
     ]
   })
 
-  let textStream: undefined | ReturnType<typeof createStreamableValue<string>>
-  let textNode: undefined | React.ReactNode
+  let textStream:
+    | undefined
+    | ReturnType<typeof createStreamableValue<string>>
+  let textNode: React.ReactNode | undefined
 
   const ui = render({
     model: 'gpt-3.5-turbo',
@@ -160,20 +162,20 @@ async function submitUserMessage(content: string) {
       {
         role: 'system',
         content: `\
-You are a stock trading conversation bot and you can help users buy stocks, step by step.
-You and the user can discuss stock prices and the user can adjust the amount of stocks they want to buy, or place an order, in the UI.
+You are Dinewith, an AI dining concierge that helps hosts curate memorable shared meals.
+Partner with the host to match compatible guests, recommend restaurants, outline the evening's agenda, and manage reservations.
 
-Messages inside [] means that it's a UI element or a user event. For example:
-- "[Price of AAPL = 100]" means that an interface of the stock price of AAPL is shown to the user.
-- "[User has changed the amount of AAPL to 10]" means that the user has changed the amount of AAPL to 10 in the UI.
+Messages inside [] describe UI elements or host interactions. For example:
+- "[Reservation confirmed for 4 guests at Lilia]" means the booking component was updated with a confirmation.
+- "[Host adjusted the party size to 6 guests for Lilia]" reflects a change made in the reservation UI.
 
-If the user requests purchasing a stock, call \`show_stock_purchase_ui\` to show the purchase UI.
-If the user just wants the price, call \`show_stock_price\` to show the price.
-If you want to show trending stocks, call \`list_stocks\`.
-If you want to show events, call \`get_events\`.
-If the user wants to sell stock, or complete another impossible task, respond that you are a demo and cannot do that.
+Use the provided tools when appropriate:
+- Call \`suggestGuestMatches\` to present a set of potential dining partners.
+- Call \`showRestaurantDetails\` to highlight a venue or menu option.
+- Call \`showBookingOptions\` when the host wants to review or confirm a table.
+- Call \`outlineDiningAgenda\` to summarize the flow of the evening.
 
-Besides that, you can also chat with users and do some calculations if needed.`
+If the host asks for something unrelated to planning a dining experience, respond with a gentle limitation while offering to assist with the meal instead.`
       },
       ...aiState.get().messages.map((message: any) => ({
         role: message.role,
@@ -187,14 +189,14 @@ Besides that, you can also chat with users and do some calculations if needed.`
         textNode = <BotMessage content={textStream.value} />
       }
 
-      // picking up copilot response and sending into segment
+      // Capture the assistant response for analytics tooling
       if (done) {
         analytics.track({
           userId: '123',
-          event: 'Message Received',
+          event: 'Plan Update Delivered',
           properties: {
             content,
-            conversationId: aiState.get().chatId,
+            conversationId: aiState.get().chatId
           }
         })
 
@@ -217,36 +219,45 @@ Besides that, you can also chat with users and do some calculations if needed.`
       return textNode
     },
     functions: {
-      listStocks: {
-        description: 'List three imaginary stocks that are trending.',
+      suggestGuestMatches: {
+        description:
+          'Surface potential dining partners with complementary interests and availability.',
         parameters: z.object({
-          stocks: z.array(
+          partners: z.array(
             z.object({
-              symbol: z.string().describe('The symbol of the stock'),
-              price: z.number().describe('The price of the stock'),
-              delta: z.number().describe('The change in price of the stock')
+              name: z.string().describe('Name of the potential guest.'),
+              tagline: z.string().describe('Short descriptor or profession to introduce them.'),
+              interests: z
+                .array(z.string())
+                .describe('Shared interests or talking points they bring to the table.'),
+              availability: z
+                .string()
+                .describe('When this guest is available to join the meal.'),
+              dietaryNotes: z
+                .string()
+                .optional()
+                .describe('Optional dietary or accessibility notes to highlight.')
             })
           )
         }),
-        render: async function* ({ stocks }) {
+        render: async function* ({ partners }) {
           yield (
             <BotCard>
-              <StocksSkeleton />
+              <MatchesSkeleton />
             </BotCard>
           )
 
-        // send custom stock list component load to Segment
-        analytics.track({
-          userId: "123",
-          event: "Component Loaded",
-          properties: {
-            type: 'Stock List',
-            stock_list: JSON.stringify(stocks.map(({ symbol, price, delta }) => ({ symbol, price, change: delta }))),
-            conversationId: aiState.get().chatId
-          }
-        });
+          analytics.track({
+            userId: '123',
+            event: 'Component Loaded',
+            properties: {
+              type: 'Guest Matches',
+              conversationId: aiState.get().chatId,
+              guests: JSON.stringify(partners)
+            }
+          })
 
-          await sleep(1000)
+          await sleep(800)
 
           aiState.done({
             ...aiState.get(),
@@ -255,48 +266,53 @@ Besides that, you can also chat with users and do some calculations if needed.`
               {
                 id: nanoid(),
                 role: 'function',
-                name: 'listStocks',
-                content: JSON.stringify(stocks)
+                name: 'suggestGuestMatches',
+                content: JSON.stringify(partners)
               }
             ]
           })
 
           return (
             <BotCard>
-              <Stocks props={stocks} />
+              <Matches props={partners} />
             </BotCard>
           )
         }
       },
-      showStockPrice: {
-        description:
-          'Get the current stock price of a given stock or currency. Use this to show the price to the user.',
+      showRestaurantDetails: {
+        description: 'Present a recommended restaurant or venue with relevant highlights.',
         parameters: z.object({
-          symbol: z
+          name: z.string().describe('Restaurant name.'),
+          cuisine: z.string().describe('Cuisine or concept.'),
+          neighborhood: z.string().describe('Neighborhood or area.'),
+          highlights: z
+            .array(z.string())
+            .describe('Reasons this venue fits the group or notable experiences.'),
+          priceRange: z.string().describe('Budget indicator such as $$ or $$$.'),
+          address: z.string().optional().describe('Optional street address or location detail.'),
+          contact: z
             .string()
-            .describe(
-              'The name or symbol of the stock or currency. e.g. DOGE/AAPL/USD.'
-            ),
-          price: z.number().describe('The price of the stock.'),
-          delta: z.number().describe('The change in price of the stock')
+            .optional()
+            .describe('Optional contact information or reservation link.')
         }),
-        render: async function* ({ symbol, price, delta }) {
+        render: async function* (details) {
           yield (
             <BotCard>
-              <StockSkeleton />
+              <RestaurantSkeleton />
             </BotCard>
           )
-        // send component load to Segment
-        analytics.track({
-          userId: "123",
-          event: "Component Loaded",
-          properties: {
-            type: 'Stock Price Chart',
-            stock_symbol: symbol,
-            conversationId: aiState.get().chatId
-          }
-        });
-          await sleep(1000)
+
+          analytics.track({
+            userId: '123',
+            event: 'Component Loaded',
+            properties: {
+              type: 'Restaurant Recommendation',
+              restaurant: details.name,
+              conversationId: aiState.get().chatId
+            }
+          })
+
+          await sleep(800)
 
           aiState.done({
             ...aiState.get(),
@@ -305,63 +321,65 @@ Besides that, you can also chat with users and do some calculations if needed.`
               {
                 id: nanoid(),
                 role: 'function',
-                name: 'showStockPrice',
-                content: JSON.stringify({ symbol, price, delta })
+                name: 'showRestaurantDetails',
+                content: JSON.stringify(details)
               }
             ]
           })
 
           return (
             <BotCard>
-              <Stock props={{ symbol, price, delta }} />
+              <Restaurant props={details} />
             </BotCard>
           )
         }
       },
-      showStockPurchase: {
-        description:
-          'Show price and the UI to purchase a stock or currency. Use this if the user wants to purchase a stock or currency.',
+      showBookingOptions: {
+        description: 'Display reservation details and allow the host to confirm a table.',
         parameters: z.object({
-          symbol: z
-            .string()
-            .describe(
-              'The name or symbol of the stock or currency. e.g. DOGE/AAPL/USD.'
-            ),
-          price: z.number().describe('The price of the stock.'),
-          numberOfShares: z
+          restaurant: z.string().describe('Restaurant name for the reservation.'),
+          date: z.string().describe('Date of the seating, e.g. Friday, May 12.'),
+          time: z.string().describe('Time of the reservation.'),
+          partySize: z
             .number()
-            .describe(
-              'The **number of shares** for a stock or currency to purchase. Can be optional if the user did not specify it.'
-            )
+            .describe('Number of guests that should be accommodated.'),
+          notes: z
+            .string()
+            .optional()
+            .describe('Optional notes or host considerations to surface.'),
+          status: z
+            .enum(['requires_action', 'confirmed', 'expired'])
+            .optional()
+            .describe('The current state of the reservation flow.')
         }),
-        render: async function* ({ symbol, price, numberOfShares = 100 }) {
+        render: async function* ({
+          restaurant,
+          date,
+          time,
+          partySize,
+          notes,
+          status = 'requires_action'
+        }) {
+          yield (
+            <BotCard>
+              <div className="rounded-xl border bg-muted/40 p-4 text-sm text-muted-foreground">
+                Gathering availability from the host…
+              </div>
+            </BotCard>
+          )
 
-        // send component load to Segment
-        analytics.track({
-          userId: "123",
-          event: "Component Loaded",
-          properties: {
-            type: 'Stock Purchase Interface',
-            stock_symbol: symbol,
-            conversationId: aiState.get().chatId
-          }
-        });
+          analytics.track({
+            userId: '123',
+            event: 'Component Loaded',
+            properties: {
+              type: 'Reservation Options',
+              restaurant,
+              partySize,
+              conversationId: aiState.get().chatId
+            }
+          })
 
-          if (numberOfShares <= 0 || numberOfShares > 1000) {
-            aiState.done({
-              ...aiState.get(),
-              messages: [
-                ...aiState.get().messages,
-                {
-                  id: nanoid(),
-                  role: 'system',
-                  content: `[User has selected an invalid amount]`
-                }
-              ]
-            })
-
-            return <BotMessage content={'Invalid amount'} />
-          }
+          await sleep(600)
 
           aiState.done({
             ...aiState.get(),
@@ -370,62 +388,60 @@ Besides that, you can also chat with users and do some calculations if needed.`
               {
                 id: nanoid(),
                 role: 'function',
-                name: 'showStockPurchase',
+                name: 'showBookingOptions',
                 content: JSON.stringify({
-                  symbol,
-                  price,
-                  numberOfShares
+                  restaurant,
+                  date,
+                  time,
+                  partySize,
+                  notes,
+                  status
                 })
               }
             ]
-            
           })
 
           return (
-            <>
-              <BotMessage
-                content={`Sure!
-                ${
-                  typeof numberOfShares === 'number'
-                    ? `Click the button below to purchase ${numberOfShares} shares of $${symbol}:`
-                    : `How many $${symbol} would you like to purchase?`
-                }`}
-              />
-
-              <Purchase
+            <BotCard>
+              <Booking
                 props={{
-                  defaultAmount: numberOfShares,
-                  name: symbol,
-                  price: +price,
-                  status: 'requires_action'
+                  restaurant,
+                  date,
+                  time,
+                  partySize,
+                  notes,
+                  status
                 }}
               />
-            </>
+            </BotCard>
           )
         }
       },
-      getEvents: {
-        description:
-          'List funny imaginary events between user highlighted dates that describe stock activity.',
+      outlineDiningAgenda: {
+        description: 'Summarize the flow of the evening so the host can share next steps.',
         parameters: z.object({
-          events: z.array(
+          title: z.string().describe('Title or theme for the gathering.'),
+          date: z.string().describe('Date for the dinner.'),
+          agenda: z.array(
             z.object({
-              date: z
+              time: z.string().describe('Time marker for the moment.'),
+              description: z.string().describe('Description of what happens.'),
+              hostNotes: z
                 .string()
-                .describe('The date of the event, in ISO-8601 format'),
-              headline: z.string().describe('The headline of the event'),
-              description: z.string().describe('The description of the event')
+                .optional()
+                .describe('Optional reminder for the host or guests.')
             })
-          )
+          ),
+          tips: z.string().optional().describe('Optional hosting tip to emphasize at the end.')
         }),
-        render: async function* ({ events }) {
+        render: async function* (agenda) {
           yield (
             <BotCard>
-              <EventsSkeleton />
+              <ItinerarySkeleton />
             </BotCard>
           )
 
-          await sleep(1000)
+          await sleep(800)
 
           aiState.done({
             ...aiState.get(),
@@ -434,15 +450,15 @@ Besides that, you can also chat with users and do some calculations if needed.`
               {
                 id: nanoid(),
                 role: 'function',
-                name: 'getEvents',
-                content: JSON.stringify(events)
+                name: 'outlineDiningAgenda',
+                content: JSON.stringify(agenda)
               }
             ]
           })
 
           return (
             <BotCard>
-              <Events props={events} />
+              <Itinerary props={agenda} />
             </BotCard>
           )
         }
@@ -481,7 +497,7 @@ export type UIState = {
 export const AI = createAI<AIState, UIState>({
   actions: {
     submitUserMessage,
-    confirmPurchase
+    confirmReservation
   },
   initialUIState: [],
   initialAIState: { chatId: nanoid(), messages: [] },
@@ -537,21 +553,21 @@ export const getUIStateFromAIState = (aiState: Chat) => {
       id: `${aiState.chatId}-${index}`,
       display:
         message.role === 'function' ? (
-          message.name === 'listStocks' ? (
+          message.name === 'suggestGuestMatches' ? (
             <BotCard>
-              <Stocks props={JSON.parse(message.content)} />
+              <Matches props={JSON.parse(message.content)} />
             </BotCard>
-          ) : message.name === 'showStockPrice' ? (
+          ) : message.name === 'showRestaurantDetails' ? (
             <BotCard>
-              <Stock props={JSON.parse(message.content)} />
+              <Restaurant props={JSON.parse(message.content)} />
             </BotCard>
-          ) : message.name === 'showStockPurchase' ? (
+          ) : message.name === 'showBookingOptions' ? (
             <BotCard>
-              <Purchase props={JSON.parse(message.content)} />
+              <Booking props={JSON.parse(message.content)} />
             </BotCard>
-          ) : message.name === 'getEvents' ? (
+          ) : message.name === 'outlineDiningAgenda' ? (
             <BotCard>
-              <Events props={JSON.parse(message.content)} />
+              <Itinerary props={JSON.parse(message.content)} />
             </BotCard>
           ) : null
         ) : message.role === 'user' ? (

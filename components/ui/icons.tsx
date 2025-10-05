@@ -198,6 +198,20 @@ function IconUser({ className, ...props }: React.ComponentProps<'svg'>) {
   )
 }
 
+function IconUtensils({ className, ...props }: React.ComponentProps<'svg'>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 256 256"
+      fill="currentColor"
+      className={cn('size-4', className)}
+      {...props}
+    >
+      <path d="M96 32a8 8 0 0 0-8 8v40a16 16 0 0 1-16 16h-8V40a8 8 0 0 0-16 0v56H32a8 8 0 0 0 0 16h16v112a8 8 0 0 0 16 0V112h8a32 32 0 0 0 32-32V40a8 8 0 0 0-8-8Zm120 0h-24a8 8 0 0 0-8 8v88h-16a8 8 0 0 0 0 16h16v104a8 8 0 0 0 16 0V144h16a8 8 0 0 0 0-16h-16V40h16a8 8 0 0 0 0-16Z" />
+    </svg>
+  )
+}
+
 function IconPlus({ className, ...props }: React.ComponentProps<'svg'>) {
   return (
     <svg
@@ -486,6 +500,7 @@ export {
   IconArrowDown,
   IconArrowRight,
   IconUser,
+  IconUtensils,
   IconPlus,
   IconArrowElbow,
   IconSpinner,

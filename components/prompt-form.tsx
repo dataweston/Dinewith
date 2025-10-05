@@ -6,7 +6,7 @@ import analytics from '@/app/analyticsInstance'
 
 import { useActions, useUIState } from 'ai/rsc'
 
-import { UserMessage } from './stocks/message'
+import { UserMessage } from './dining/message'
 import { type AI } from '@/lib/chat/actions'
 import { Button } from '@/components/ui/button'
 import { IconArrowElbow, IconPlus } from '@/components/ui/icons'
@@ -52,7 +52,7 @@ export function PromptForm({
         setInput('')
         if (!value) return
         
-        // sending user prompt to Segment
+        // Log prompt metadata for analytics tooling
         analytics.track({
           userId: "123",
           event: "Message Sent",
