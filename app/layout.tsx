@@ -8,13 +8,18 @@ import { Providers } from '@/components/providers'
 import { Header } from '@/components/header'
 import { Toaster } from '@/components/ui/sonner'
 
+const appUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : 'http://localhost:3000'
+
 export const metadata = {
-  metadataBase: new URL(`https://${process.env.VERCEL_URL}`),
+  metadataBase: new URL(appUrl),
   title: {
-    default: 'Next.js AI Chatbot',
-    template: `%s - Next.js AI Chatbot`
+    default: 'Dinewith',
+    template: `%s - Dinewith`
   },
-  description: 'An AI-powered chatbot template built with Next.js and Vercel.',
+  description:
+    'Plan unforgettable dining experiences by matching with the right guests, menus, and venues.',
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon-16x16.png',
