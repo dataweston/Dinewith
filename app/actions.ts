@@ -7,8 +7,17 @@ import { kv } from '@vercel/kv'
 import { auth } from '@/auth'
 import { type Chat } from '@/lib/types'
 
+const kvConfigured =
+  Boolean(process.env.KV_URL) &&
+  Boolean(process.env.KV_REST_API_URL) &&
+  Boolean(process.env.KV_REST_API_TOKEN)
+
 export async function getChats(userId?: string | null) {
   if (!userId) {
+    return []
+  }
+
+  if (!kvConfigured) {
     return []
   }
 
@@ -31,6 +40,10 @@ export async function getChats(userId?: string | null) {
 }
 
 export async function getChat(id: string, userId: string) {
+  if (!kvConfigured) {
+    return null
+  }
+
   const chat = await kv.hgetall<Chat>(`chat:${id}`)
 
   if (!chat || (userId && chat.userId !== userId)) {
@@ -49,6 +62,11 @@ export async function removeChat({ id, path }: { id: string; path: string }) {
     }
   }
 
+  if (!kvConfigured) {
+    return {
+      error: 'Storage not configured'
+    }
+  }
   //Convert uid to string for consistent comparison with session.user.id
   const uid = String(await kv.hget(`chat:${id}`, 'userId'))
 
@@ -74,6 +92,10 @@ export async function clearChats() {
     }
   }
 
+  if (!kvConfigured) {
+    return redirect('/')
+  }
+
   const chats: string[] = await kv.zrange(`user:chat:${session.user.id}`, 0, -1)
   if (!chats.length) {
     return redirect('/')
@@ -92,6 +114,10 @@ export async function clearChats() {
 }
 
 export async function getSharedChat(id: string) {
+  if (!kvConfigured) {
+    return null
+  }
+
   const chat = await kv.hgetall<Chat>(`chat:${id}`)
 
   if (!chat || !chat.sharePath) {
@@ -107,6 +133,12 @@ export async function shareChat(id: string) {
   if (!session?.user?.id) {
     return {
       error: 'Unauthorized'
+    }
+  }
+
+  if (!kvConfigured) {
+    return {
+      error: 'Storage not configured'
     }
   }
 
@@ -130,6 +162,10 @@ export async function shareChat(id: string) {
 
 export async function saveChat(chat: Chat) {
   const session = await auth()
+
+  if (!kvConfigured) {
+    return
+  }
 
   if (session && session.user) {
     const pipeline = kv.pipeline()
