@@ -1,0 +1,23 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dinewith mark">
+  <defs>
+    <linearGradient id="dw-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffbb55" />
+      <stop offset="50%" stop-color="#ff8c6b" />
+      <stop offset="100%" stop-color="#f0488b" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#dw-gradient)" />
+  <path
+    d="M20 16h12c8.284 0 15 6.716 15 15s-6.716 15-15 15H20V16Z"
+    fill="#090909"
+    opacity="0.1"
+  />
+  <path
+    d="M18 16h12c8.837 0 16 7.163 16 16s-7.163 16-16 16H18V16Zm12 26c5.523 0 10-4.477 10-10s-4.477-10-10-10h-4v20h4Z"
+    fill="#fff7ed"
+  />
+  <path
+    d="M14 44l6.2 12 6.3-8.2 6.3 8.2L39 44l-3.4 0-3.6 6-5-6.2-5 6.2-3.6-6H14Z"
+    fill="#fff7ed"
+  />
+</svg>

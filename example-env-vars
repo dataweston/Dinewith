@@ -24,3 +24,6 @@ POSTGRES_URL=""
 POSTGRES_URL_NON_POOLING=""
 POSTGRES_URL_NO_SSL=""
 POSTGRES_USER=""
+
+# Prisma/Postgres connection string (defaults to POSTGRES_PRISMA_URL)
+DATABASE_URL=""

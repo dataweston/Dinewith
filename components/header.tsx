@@ -1,10 +1,11 @@
 import * as React from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
 import { auth } from '@/auth'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { IconGitHub, IconSeparator, IconUtensils } from '@/components/ui/icons'
+import { IconGitHub, IconSeparator } from '@/components/ui/icons'
 import { UserMenu } from '@/components/user-menu'
 import { SidebarMobile } from './sidebar-mobile'
 import { SidebarToggle } from './sidebar-toggle'
@@ -20,7 +21,14 @@ async function UserOrLogin() {
         rel="nofollow"
         className="flex items-center gap-2 text-base font-semibold"
       >
-        <IconUtensils className="size-6 text-primary" />
+        <Image
+          src="/logo-dinewith.svg"
+          alt="Dinewith"
+          width={28}
+          height={28}
+          className="rounded-lg shadow-sm"
+          priority
+        />
         <span className="hidden sm:inline">Dinewith</span>
       </Link>
       {session?.user ? (
