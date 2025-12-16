@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { waitlistSchema } from '@/lib/validations/waitlist'
 
+export const runtime = 'nodejs'
+
 export async function POST(request: Request) {
   let payload: unknown
 
@@ -27,15 +29,15 @@ export async function POST(request: Request) {
   const data = parsed.data
   const fallbackSource = 'city-landing'
 
-  const city = await prisma.city.findUnique({
-    where: { slug: data.citySlug }
-  })
-
-  if (!city) {
-    return NextResponse.json({ error: 'City not found' }, { status: 404 })
-  }
-
   try {
+    const city = await prisma.city.findUnique({
+      where: { slug: data.citySlug }
+    })
+
+    if (!city) {
+      return NextResponse.json({ error: 'City not found' }, { status: 404 })
+    }
+
     const entry = await prisma.waitlistEntry.upsert({
       where: {
         email_cityId: {
