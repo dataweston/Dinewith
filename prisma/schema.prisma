@@ -39,6 +39,10 @@ model User {
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   hostApplications HostApplication[]
+  hostProfile      HostProfile?
+  bookings         Booking[]
+  sentMessages     Message[]          @relation("SentMessages")
+  receivedMessages Message[]          @relation("ReceivedMessages")
 }
 
 model HostApplication {
@@ -116,4 +120,186 @@ model WaitlistEntry {
   updatedAt DateTime        @updatedAt
 
   @@unique([email, cityId])
+}
+
+// Marketplace Models
+
+model HostProfile {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  displayName String
+  avatar      String?
+  bio         String?
+  tagline     String?
+  location    String?
+  
+  // Structured profile data
+  cuisines    String[]  @default([])
+  languages   String[]  @default([])
+  
+  // Meta
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  listings    Listing[]
+  
+  @@index([isActive])
+}
+
+enum ListingStatus {
+  DRAFT
+  SUBMITTED
+  ACTIVE
+  PAUSED
+  REJECTED
+}
+
+enum ListingType {
+  IN_PERSON
+  VIRTUAL
+  HYBRID
+}
+
+model Listing {
+  id            String        @id @default(cuid())
+  hostProfileId String
+  hostProfile   HostProfile   @relation(fields: [hostProfileId], references: [id], onDelete: Cascade)
+  
+  title         String
+  slug          String        @unique
+  type          ListingType
+  status        ListingStatus @default(DRAFT)
+  
+  // Pricing
+  priceAmount   Int           // in cents
+  priceCurrency String        @default("USD")
+  duration      Int?          // in minutes
+  maxGuests     Int           @default(1)
+  
+  // Content (WYSIWYG JSON)
+  content       String        @db.Text // JSON blob
+  
+  // Location (for in-person)
+  city          String?
+  state         String?
+  country       String?       @default("US")
+  
+  // Meta
+  viewCount     Int           @default(0)
+  bookingCount  Int           @default(0)
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  publishedAt   DateTime?
+  
+  availability  Availability[]
+  bookings      Booking[]
+  
+  @@index([status])
+  @@index([type])
+  @@index([hostProfileId])
+  @@index([city])
+}
+
+enum AvailabilityType {
+  SPECIFIC_DATE
+  RECURRING
+}
+
+model Availability {
+  id        String           @id @default(cuid())
+  listingId String
+  listing   Listing          @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  type      AvailabilityType
+  
+  // For specific dates
+  startTime DateTime?
+  endTime   DateTime?
+  
+  // For recurring (JSON with day of week, time ranges)
+  recurring String?          @db.Text // JSON blob
+  
+  isBooked  Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  @@index([listingId])
+  @@index([startTime])
+}
+
+enum BookingStatus {
+  REQUESTED
+  ACCEPTED
+  AUTHORIZED
+  COMPLETED
+  CANCELED
+  REFUNDED
+  NO_SHOW
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  listingId       String
+  listing         Listing       @relation(fields: [listingId], references: [id])
+  guestId         String
+  guest           User          @relation(fields: [guestId], references: [id])
+  
+  status          BookingStatus @default(REQUESTED)
+  
+  // Booking details
+  scheduledStart  DateTime
+  scheduledEnd    DateTime
+  guestCount      Int           @default(1)
+  
+  // Pricing
+  totalAmount     Int           // in cents
+  platformFee     Int           // in cents
+  hostAmount      Int           // in cents
+  
+  // Payment tracking (stub)
+  paymentIntentId String?
+  authorizedAt    DateTime?
+  capturedAt      DateTime?
+  refundedAt      DateTime?
+  
+  // Communication
+  guestNotes      String?       @db.Text
+  hostNotes       String?       @db.Text
+  cancelReason    String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  messages        Message[]
+  
+  @@index([listingId])
+  @@index([guestId])
+  @@index([status])
+  @@index([scheduledStart])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  recipientId String
+  recipient  User     @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  
+  content    String   @db.Text
+  isRead     Boolean  @default(false)
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@index([bookingId])
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([createdAt])
 }
