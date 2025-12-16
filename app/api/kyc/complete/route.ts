@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { getPlaidIdentityStatus, plaidEnabled } from '@/lib/integrations/plaid'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -11,11 +12,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { applicationId, success = true, data = {} } = body
+    const { applicationId, sessionId } = body
 
-    if (!applicationId) {
+    if (!applicationId || !sessionId) {
       return NextResponse.json(
-        { error: 'Application ID is required' },
+        { error: 'Application ID and session ID are required' },
         { status: 400 }
       )
     }
@@ -35,9 +36,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // TODO: Integrate with Plaid webhook or callback handler
-    // For now, accept the success parameter and update status
-    const kycStatus = success ? 'COMPLETED' : 'FAILED'
+    // Check Plaid verification status
+    const plaidStatus = await getPlaidIdentityStatus(sessionId)
+
+    const kycStatus = plaidStatus.status === 'success' ? 'COMPLETED' : 'FAILED'
 
     const updated = await prisma.hostApplication.update({
       where: { id: applicationId },
@@ -45,10 +47,11 @@ export async function POST(request: Request) {
         kycStatus,
         kycCompletedAt: new Date(),
         kycData: JSON.stringify({
-          provider: 'plaid',
-          status: kycStatus.toLowerCase(),
+          provider: plaidStatus.provider || (plaidEnabled ? 'plaid' : 'stub'),
+          sessionId,
+          status: plaidStatus.status,
           timestamp: new Date().toISOString(),
-          ...data
+          details: plaidStatus
         })
       }
     })
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       kycStatus: updated.kycStatus,
-      message: `KYC process ${kycStatus.toLowerCase()} (stub implementation)`
+      verificationDetails: plaidStatus
     })
   } catch (error) {
     console.error('Error completing KYC:', error)

@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { createPlaidIdentitySession, plaidEnabled } from '@/lib/integrations/plaid'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -20,7 +21,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verify the application belongs to the user
     const application = await prisma.hostApplication.findFirst({
       where: {
         id: applicationId,
@@ -35,16 +35,17 @@ export async function POST(request: Request) {
       )
     }
 
-    // TODO: Integrate with Plaid or other KYC provider
-    // For now, just update the status to IN_PROGRESS
+    const plaidSession = await createPlaidIdentitySession(session.user.id)
+
     const updated = await prisma.hostApplication.update({
       where: { id: applicationId },
       data: {
         kycStatus: 'IN_PROGRESS',
         kycStartedAt: new Date(),
         kycData: JSON.stringify({
-          provider: 'plaid',
-          status: 'started',
+          provider: plaidSession.provider || (plaidEnabled ? 'plaid' : 'stub'),
+          sessionId: plaidSession.sessionId,
+          status: plaidEnabled ? 'started' : 'stub-started',
           timestamp: new Date().toISOString()
         })
       }
@@ -53,9 +54,11 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       kycStatus: updated.kycStatus,
-      // In a real implementation, return a link or session token
-      kycLink: 'https://example.com/kyc-placeholder',
-      message: 'KYC process initiated (stub implementation)'
+      shareableUrl: plaidSession.shareableUrl,
+      sessionId: plaidSession.sessionId,
+      message: plaidEnabled
+        ? 'KYC process initiated via Plaid'
+        : 'Plaid not configured - using stubbed verification flow'
     })
   } catch (error) {
     console.error('Error starting KYC:', error)

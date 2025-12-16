@@ -43,6 +43,9 @@ model User {
   bookings         Booking[]
   sentMessages     Message[]          @relation("SentMessages")
   receivedMessages Message[]          @relation("ReceivedMessages")
+  streams          Stream[]
+  reports          Report[]
+  reportedContent  Report[]           @relation("ReportedContent")
 }
 
 model HostApplication {
@@ -302,4 +305,161 @@ model Message {
   @@index([senderId])
   @@index([recipientId])
   @@index([createdAt])
+}
+
+// Streaming & Live Features
+
+enum StreamStatus {
+  CREATED
+  LIVE
+  ENDED
+  ARCHIVED
+}
+
+enum StreamType {
+  ONE_TO_ONE
+  SMALL_GROUP
+  BROADCAST
+}
+
+model Stream {
+  id              String       @id @default(cuid())
+  hostId          String
+  host            User         @relation(fields: [hostId], references: [id])
+  
+  title           String
+  description     String?      @db.Text
+  type            StreamType
+  status          StreamStatus @default(CREATED)
+  
+  // Livepeer integration
+  livepeerStreamId String?     @unique
+  playbackId       String?
+  streamKey        String?
+  
+  // Agora integration (for 1:1)
+  agoraChannelName String?
+  agoraAppId       String?
+  
+  // VOD settings
+  vodEnabled       Boolean      @default(true)
+  vodUrl           String?
+  vodExpiresAt     DateTime?    // 7-day retention
+  
+  // Meta
+  viewerCount      Int          @default(0)
+  maxViewers       Int          @default(0)
+  duration         Int?         // in seconds
+  
+  startedAt        DateTime?
+  endedAt          DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  
+  reports          Report[]
+  
+  @@index([hostId])
+  @@index([status])
+  @@index([vodExpiresAt])
+}
+
+// Payment & Fee Tracking
+
+enum PaymentProcessor {
+  BRAINTREE
+  SQUARE
+}
+
+enum FeeTransactionType {
+  PLATFORM_FEE
+  REFUND
+  CHARGEBACK
+}
+
+model FeeTransaction {
+  id                String              @id @default(cuid())
+  bookingId         String
+  
+  type              FeeTransactionType
+  processor         PaymentProcessor
+  
+  // Amounts in cents
+  bookingTotal      Int
+  platformFee       Int                 // 4% of booking total
+  hostPayout        Int
+  
+  // Payment processor IDs
+  transactionId     String?
+  paymentIntentId   String?
+  
+  // Status
+  processed         Boolean             @default(false)
+  processedAt       DateTime?
+  
+  // Meta
+  metadata          String?             @db.Text // JSON blob
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([bookingId])
+  @@index([processed])
+}
+
+// Moderation & Reporting
+
+enum ReportType {
+  LISTING
+  STREAM
+  USER
+  MESSAGE
+}
+
+enum ReportReason {
+  INAPPROPRIATE_CONTENT
+  HARASSMENT
+  SPAM
+  FRAUD
+  SAFETY_CONCERN
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id              String        @id @default(cuid())
+  reporterId      String
+  reporter        User          @relation(fields: [reporterId], references: [id])
+  
+  type            ReportType
+  reason          ReportReason
+  status          ReportStatus  @default(PENDING)
+  
+  // Content references
+  reportedUserId  String?
+  reportedUser    User?         @relation("ReportedContent", fields: [reportedUserId], references: [id])
+  listingId       String?
+  streamId        String?
+  stream          Stream?       @relation(fields: [streamId], references: [id])
+  
+  description     String        @db.Text
+  
+  // Resolution
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  resolution      String?       @db.Text
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([reporterId])
+  @@index([type])
+  @@index([status])
+  @@index([reportedUserId])
+  @@index([listingId])
+  @@index([streamId])
 }

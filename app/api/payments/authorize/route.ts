@@ -1,6 +1,8 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { authorizeBraintreePayment } from '@/lib/integrations/braintree'
+import { authorizeSquarePayment } from '@/lib/integrations/square'
 
 export async function POST(request: Request) {
   try {
@@ -11,11 +13,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { bookingId } = body
+    const { bookingId, paymentMethodNonce, processor = 'braintree' } = body
 
-    if (!bookingId) {
+    if (!bookingId || !paymentMethodNonce) {
       return NextResponse.json(
-        { error: 'Booking ID is required' },
+        { error: 'Booking ID and payment method are required' },
         { status: 400 }
       )
     }
@@ -25,6 +27,13 @@ export async function POST(request: Request) {
       where: {
         id: bookingId,
         guestId: session.user.id
+      },
+      include: {
+        listing: {
+          include: {
+            host: true
+          }
+        }
       }
     })
 
@@ -42,15 +51,53 @@ export async function POST(request: Request) {
       )
     }
 
-    // TODO: Integrate with real payment processor (Stripe, etc.)
-    // For now, create a stub authorization
-    const paymentIntentId = `stub_pi_${Math.random().toString(36).substring(2)}`
+    // Calculate amounts (booking.amount already includes 4% platform fee)
+    const totalCents = Math.round(booking.amount * 100)
+    const platformFeeCents = Math.round(booking.platformFee * 100)
+    const hostPayoutCents = totalCents - platformFeeCents
 
+    let paymentResult
+    let processorUsed = processor
+
+    try {
+      if (processor === 'braintree') {
+        paymentResult = await authorizeBraintreePayment({
+          amount: totalCents,
+          paymentMethodNonce,
+          customerId: session.user.id
+        })
+      } else {
+        throw new Error('Primary processor unavailable')
+      }
+    } catch (primaryError) {
+      console.warn('Primary processor failed, trying Square fallback:', primaryError)
+      processorUsed = 'square'
+      
+      paymentResult = await authorizeSquarePayment({
+        amount: totalCents,
+        sourceId: paymentMethodNonce,
+        idempotencyKey: `${bookingId}-auth-${Date.now()}`,
+        customerId: session.user.id
+      })
+    }
+
+    // Create FeeTransaction record for platform fee
+    const feeTransaction = await prisma.feeTransaction.create({
+      data: {
+        bookingId: booking.id,
+        amount: booking.platformFee,
+        status: 'PENDING',
+        processor: processorUsed,
+        transactionId: paymentResult.paymentId || paymentResult.transactionId
+      }
+    })
+
+    // Update booking with authorization details
     const updated = await prisma.booking.update({
       where: { id: bookingId },
       data: {
         status: 'AUTHORIZED',
-        paymentIntentId,
+        paymentIntentId: paymentResult.paymentId || paymentResult.transactionId,
         authorizedAt: new Date()
       }
     })
@@ -58,8 +105,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       booking: updated,
-      paymentIntentId,
-      message: 'Payment authorized (stub implementation)'
+      paymentIntentId: paymentResult.paymentId || paymentResult.transactionId,
+      processor: processorUsed,
+      feeTransactionId: feeTransaction.id
     })
   } catch (error) {
     console.error('Error authorizing payment:', error)
