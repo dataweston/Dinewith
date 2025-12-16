@@ -8,6 +8,8 @@ import { IconArrowRight, IconUtensils } from '@/components/ui/icons'
 
 import { WaitlistForm } from './waitlist-form'
 
+export const dynamic = 'force-dynamic'
+
 const getCity = cache(async (stateSlug: string, citySlug: string) => {
   return prisma.city.findFirst({
     where: {
