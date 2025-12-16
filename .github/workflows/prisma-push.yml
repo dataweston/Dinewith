@@ -1,0 +1,31 @@
+name: Prisma Push & Seed
+
+on:
+  workflow_dispatch:
+
+jobs:
+  push-and-seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install pnpm
+        run: npm install -g pnpm@8
+      - name: Install dependencies
+        run: pnpm install
+      - name: Prisma db push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm prisma db push --schema prisma/schema.prisma
+      - name: Prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm prisma generate
+      - name: Run seed
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm run seed
