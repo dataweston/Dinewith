@@ -11,6 +11,7 @@ interface User {
   email: string
   password: string
   salt: string
+  role: string
 }
 
 async function getUser(email: string): Promise<User | null> {
@@ -51,7 +52,8 @@ export const { auth, signIn, signOut } = NextAuth({
             return {
               id: user.id,
               email: user.email,
-              name: user.name
+              name: user.name,
+              role: user.role
             }
           } else {
             return null

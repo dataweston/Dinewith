@@ -1,5 +1,3 @@
-import type { NextAuthConfig } from 'next-auth'
-
 export const authConfig = {
   secret: process.env.AUTH_SECRET,
   pages: {
@@ -7,7 +5,7 @@ export const authConfig = {
     newUser: '/signup'
   },
   callbacks: {
-    async authorized({ auth, request: { nextUrl } }) {
+    async authorized({ auth, request: { nextUrl } }: any) {
       const isLoggedIn = !!auth?.user
       const isOnLoginPage = nextUrl.pathname.startsWith('/login')
       const isOnSignupPage = nextUrl.pathname.startsWith('/signup')
@@ -20,23 +18,23 @@ export const authConfig = {
 
       return true
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
-        token = { ...token, id: user.id }
+        token = { ...token, id: user.id, role: (user as any).role }
       }
 
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (token) {
-        const { id } = token as { id: string }
+        const { id, role } = token as { id: string; role?: string }
         const { user } = session
 
-        session = { ...session, user: { ...user, id } }
+        session = { ...session, user: { ...user, id, role } }
       }
 
       return session
     }
   },
-  providers: []
-} satisfies NextAuthConfig
+  providers: [] as any
+} as const

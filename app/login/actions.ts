@@ -2,7 +2,6 @@
 
 import { signIn } from '@/auth'
 import { AuthResult } from '@/lib/types'
-import { AuthError } from 'next-auth'
 import { z } from 'zod'
 
 
@@ -36,15 +35,13 @@ export async function authenticate(
       return { type: 'error', message: 'Invalid credentials!' }
     }
   } catch (error) {
-    if (error instanceof AuthError) {
-      switch (error.type) {
-        case 'CredentialsSignin':
-          return { type: 'error', message: 'Invalid credentials!' }
-        default:
-          return {
-            type: 'error',
-            message: 'Something went wrong, please try again!'
-          }
+    if (error && typeof error === 'object' && 'type' in error) {
+      if (error.type === 'CredentialsSignin') {
+        return { type: 'error', message: 'Invalid credentials!' }
+      }
+      return {
+        type: 'error',
+        message: 'Something went wrong, please try again!'
       }
     }
 

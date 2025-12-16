@@ -8,14 +8,75 @@ datasource db {
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
+enum UserRole {
+  GUEST
+  HOST
+  MODERATOR
+  ADMIN
+}
+
+enum HostApplicationStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum KycStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  salt      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String             @id @default(cuid())
+  email            String             @unique
+  name             String?
+  password         String
+  salt             String
+  role             UserRole           @default(GUEST)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  hostApplications HostApplication[]
+}
+
+model HostApplication {
+  id               String                 @id @default(cuid())
+  userId           String
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Basic Info
+  businessName     String?
+  phone            String?
+  bio              String?
+  experienceYears  Int?
+  cuisineTypes     String[]               @default([])
+  
+  // Location
+  address          String?
+  city             String?
+  state            String?
+  zipCode          String?
+  
+  // KYC & Verification
+  kycStatus        KycStatus              @default(NOT_STARTED)
+  kycStartedAt     DateTime?
+  kycCompletedAt   DateTime?
+  kycData          String?                // JSON blob for KYC metadata
+  
+  // Application Status
+  status           HostApplicationStatus  @default(DRAFT)
+  submittedAt      DateTime?
+  reviewedAt       DateTime?
+  reviewedBy       String?                // User ID of moderator
+  reviewNotes      String?
+  
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  
+  @@index([userId])
+  @@index([status])
 }
 
 enum WaitlistStatus {
