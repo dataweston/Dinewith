@@ -1,10 +1,11 @@
 'use server'
 
 import { signIn } from '@/auth'
-import { db } from '@vercel/postgres'
 import { getStringFromBuffer } from '@/lib/utils'
 import { z } from 'zod'
 import { AuthResult } from '@/lib/types'
+import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 
 export async function signup(
@@ -35,14 +36,14 @@ export async function signup(
     )
     const hashedPassword = getStringFromBuffer(hashedPasswordBuffer)
 
-    const client = await db.connect()
-
     try {
-      await client.sql`
-              INSERT INTO users (email, password, salt)
-              VALUES (${email}, ${hashedPassword}, ${salt})
-              ON CONFLICT (id) DO NOTHING;
-            `
+      await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          salt
+        }
+      })
 
       await signIn('credentials', {
         email,
@@ -51,20 +52,17 @@ export async function signup(
       })
       return { type: 'success', message: 'Account created!' }
     } catch (error) {
-      const { message } = error as Error
-
       if (
-        message.startsWith('duplicate key value violates unique constraint')
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
       ) {
         return { type: 'error', message: 'User already exists! Please log in.' }
-      } else {
-        return {
-          type: 'error',
-          message: 'Something went wrong! Please try again.'
-        }
       }
-    } finally {
-      client.release()
+
+      return {
+        type: 'error',
+        message: 'Something went wrong! Please try again.'
+      }
     }
   } else {
     return {

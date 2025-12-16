@@ -2,24 +2,23 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { authConfig } from './auth.config'
 import { z } from 'zod'
-import { sql } from '@vercel/postgres'
 import { getStringFromBuffer } from './lib/utils'
+import { prisma } from './lib/prisma'
 
 interface User {
   id: string
-  name: string
+  name: string | null
   email: string
   password: string
   salt: string
 }
 
-async function getUser(email: string): Promise<User | undefined> {
-  try {
-    const user = await sql<User>`SELECT * FROM users WHERE email=${email}`
-    return user.rows[0]
-  } catch (error) {
-    throw new Error('Failed to fetch user.')
-  }
+async function getUser(email: string): Promise<User | null> {
+  return prisma.user.findUnique({
+    where: {
+      email
+    }
+  })
 }
 
 export const { auth, signIn, signOut } = NextAuth({
@@ -49,7 +48,11 @@ export const { auth, signIn, signOut } = NextAuth({
           const hashedPassword = getStringFromBuffer(hashedPasswordBuffer)
 
           if (hashedPassword === user.password) {
-            return user
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name
+            }
           } else {
             return null
           }

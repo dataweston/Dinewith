@@ -19,13 +19,13 @@ jobs:
         run: pnpm install
       - name: Prisma db push
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.POSTGRES_URL_NON_POOLING }}
         run: pnpm prisma db push --schema prisma/schema.prisma
       - name: Prisma generate
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.POSTGRES_URL_NON_POOLING }}
         run: pnpm prisma generate
       - name: Run seed
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.POSTGRES_URL_NON_POOLING }}
         run: pnpm run seed
