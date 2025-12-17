@@ -1,10 +1,10 @@
-import { Client, Environment, ApiError } from 'square'
+import { Client } from 'square'
 
 const client = new Client({
   accessToken: process.env.SQUARE_ACCESS_TOKEN!,
   environment: process.env.SQUARE_ENVIRONMENT === 'production'
-    ? Environment.Production
-    : Environment.Sandbox,
+    ? 'production'
+    : 'sandbox',
 })
 
 export async function authorizeSquarePayment(data: {
@@ -32,8 +32,9 @@ export async function authorizeSquarePayment(data: {
     }
   } catch (error) {
     console.error('Square authorization error:', error)
-    if (error instanceof ApiError) {
-      throw new Error(error.errors?.[0]?.detail || 'Payment failed')
+    if (error && typeof error === 'object' && 'errors' in error) {
+      const apiError = error as { errors?: Array<{ detail?: string }> }
+      throw new Error(apiError.errors?.[0]?.detail || 'Payment failed')
     }
     throw error
   }
@@ -50,8 +51,9 @@ export async function captureSquarePayment(paymentId: string) {
     }
   } catch (error) {
     console.error('Square capture error:', error)
-    if (error instanceof ApiError) {
-      throw new Error(error.errors?.[0]?.detail || 'Capture failed')
+    if (error && typeof error === 'object' && 'errors' in error) {
+      const apiError = error as { errors?: Array<{ detail?: string }> }
+      throw new Error(apiError.errors?.[0]?.detail || 'Capture failed')
     }
     throw error
   }
@@ -81,8 +83,9 @@ export async function refundSquarePayment(data: {
     }
   } catch (error) {
     console.error('Square refund error:', error)
-    if (error instanceof ApiError) {
-      throw new Error(error.errors?.[0]?.detail || 'Refund failed')
+    if (error && typeof error === 'object' && 'errors' in error) {
+      const apiError = error as { errors?: Array<{ detail?: string }> }
+      throw new Error(apiError.errors?.[0]?.detail || 'Refund failed')
     }
     throw error
   }

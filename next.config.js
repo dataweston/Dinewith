@@ -10,5 +10,9 @@ module.exports = {
       }
     ]
   },
-  reactStrictMode: false
+  reactStrictMode: false,
+  experimental: {
+    workerThreads: false,
+    cpus: 1
+  }
 }
