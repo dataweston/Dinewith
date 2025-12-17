@@ -145,6 +145,9 @@ devDependencies:
   '@tailwindcss/typography':
     specifier: ^0.5.10
     version: 0.5.10(tailwindcss@3.4.1)
+  '@types/braintree':
+    specifier: ^3.4.2
+    version: 3.4.2
   '@types/d3-scale':
     specifier: ^4.0.8
     version: 4.0.8
@@ -1765,7 +1768,7 @@ packages:
     resolution: {integrity: sha512-FkBMwD+qbGQeMu1cOHnuGB6x4yzPjho8ap5WtbEJ26umhgqVXbhekKUQO+hZEL1vU92a3wHwdp0HAcqAUF5iDg==}
     peerDependencies:
       '@types/react': '*'
-      react: 18.2.0
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
       '@types/react':
         optional: true
@@ -2054,6 +2057,12 @@ packages:
       lodash.merge: 4.6.2
       postcss-selector-parser: 6.0.10
       tailwindcss: 3.4.1
+    dev: true
+
+  /@types/braintree@3.4.2:
+    resolution: {integrity: sha512-SQdxLBp4cs21LFX/aaMmzaaxkK/kEWWaJSUU8PQpgheq6Mi51bpm9VxDn9ZkboqDs8CktLGjUB0G1mr5i1w+0w==}
+    dependencies:
+      '@types/node': 20.11.5
     dev: true
 
   /@types/d3-scale@4.0.8:
@@ -2462,7 +2471,7 @@ packages:
     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
     engines: {node: '>=10'}
     dependencies:
-      tslib: 2.6.2
+      tslib: 2.8.1
     dev: false
 
   /aria-query@5.3.0:
@@ -5593,7 +5602,7 @@ packages:
       '@types/react': 18.2.48
       react: 18.2.0
       react-style-singleton: 2.2.3(@types/react@18.2.48)(react@18.2.0)
-      tslib: 2.6.2
+      tslib: 2.8.1
     dev: false
 
   /react-remove-scroll@2.5.5(@types/react@18.2.48)(react@18.2.0):
@@ -5629,7 +5638,7 @@ packages:
       react: 18.2.0
       react-remove-scroll-bar: 2.3.8(@types/react@18.2.48)(react@18.2.0)
       react-style-singleton: 2.2.3(@types/react@18.2.48)(react@18.2.0)
-      tslib: 2.6.2
+      tslib: 2.8.1
       use-callback-ref: 1.3.3(@types/react@18.2.48)(react@18.2.0)
       use-sidecar: 1.1.3(@types/react@18.2.48)(react@18.2.0)
     dev: false
@@ -5664,7 +5673,7 @@ packages:
       '@types/react': 18.2.48
       get-nonce: 1.0.1
       react: 18.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     dev: false
 
   /react-syntax-highlighter@15.5.0(react@18.2.0):
@@ -6556,7 +6565,7 @@ packages:
     dependencies:
       '@types/react': 18.2.48
       react: 18.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     dev: false
 
   /use-composed-ref@1.3.0(react@18.2.0):
@@ -6623,7 +6632,7 @@ packages:
       '@types/react': 18.2.48
       detect-node-es: 1.1.0
       react: 18.2.0
-      tslib: 2.6.2
+      tslib: 2.8.1
     dev: false
 
   /use-sync-external-store@1.2.0(react@18.2.0):

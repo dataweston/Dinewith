@@ -59,7 +59,7 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
         }
       })
     }
-  }, [])
+  }, [id, messages.length, setNewChatId])
 
   useEffect(() => {
     missingKeys.map(key => {

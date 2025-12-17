@@ -345,6 +345,7 @@ model Stream {
   vodEnabled       Boolean      @default(true)
   vodUrl           String?
   vodExpiresAt     DateTime?    // 7-day retention
+  vodDeletedAt     DateTime?    // Track when VOD was cleaned up
   
   // Meta
   viewerCount      Int          @default(0)

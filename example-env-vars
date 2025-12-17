@@ -27,3 +27,27 @@ POSTGRES_USER=""
 
 # Prisma/Postgres connection string (use the non-pooling URL for schema ops)
 DATABASE_URL=""
+# Plaid Identity verification
+PLAID_CLIENT_ID=""
+PLAID_SECRET=""
+PLAID_ENV="sandbox" # sandbox, development, or production
+
+# Payment processors
+BRAINTREE_MERCHANT_ID=""
+BRAINTREE_PUBLIC_KEY=""
+BRAINTREE_PRIVATE_KEY=""
+BRAINTREE_ENV="sandbox"
+
+SQUARE_APPLICATION_ID=""
+SQUARE_ACCESS_TOKEN=""
+SQUARE_LOCATION_ID=""
+SQUARE_ENV="sandbox"
+
+# Streaming services
+LIVEPEER_API_KEY=""
+
+AGORA_APP_ID=""
+AGORA_APP_CERTIFICATE=""
+
+# Cron job authentication
+CRON_SECRET=""

@@ -1,6 +1,8 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { captureBraintreePayment } from '@/lib/integrations/braintree'
+import { captureSquarePayment } from '@/lib/integrations/square'
 
 export async function POST(request: Request) {
   try {
@@ -56,9 +58,37 @@ export async function POST(request: Request) {
       )
     }
 
-    // TODO: Integrate with real payment processor to capture funds
-    // For now, just update status
+    if (!booking.paymentIntentId) {
+      return NextResponse.json(
+        { error: 'No payment authorization found' },
+        { status: 400 }
+      )
+    }
 
+    // Get the FeeTransaction to determine processor
+    const feeTransaction = await prisma.feeTransaction.findFirst({
+      where: { bookingId: booking.id }
+    })
+
+    const processor = feeTransaction?.processor || 'braintree'
+    
+    // Capture payment from processor
+    let captureResult
+    try {
+      if (processor === 'braintree') {
+        captureResult = await captureBraintreePayment(booking.paymentIntentId)
+      } else {
+        captureResult = await captureSquarePayment(booking.paymentIntentId)
+      }
+    } catch (error) {
+      console.error('Payment capture failed:', error)
+      return NextResponse.json(
+        { error: 'Failed to capture payment from processor' },
+        { status: 500 }
+      )
+    }
+
+    // Update booking status
     const updated = await prisma.booking.update({
       where: { id: bookingId },
       data: {
@@ -66,6 +96,17 @@ export async function POST(request: Request) {
         capturedAt: new Date()
       }
     })
+
+    // Update FeeTransaction status
+    if (feeTransaction) {
+      await prisma.feeTransaction.update({
+        where: { id: feeTransaction.id },
+        data: { 
+          processed: true,
+          processedAt: new Date()
+        }
+      })
+    }
 
     // Increment booking count on listing
     await prisma.listing.update({
@@ -78,7 +119,10 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       booking: updated,
-      message: 'Payment captured (stub implementation)'
+      captureId: 'transactionId' in captureResult 
+        ? captureResult.transactionId 
+        : captureResult.paymentId,
+      processor
     })
   } catch (error) {
     console.error('Error capturing payment:', error)

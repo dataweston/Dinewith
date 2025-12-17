@@ -27,13 +27,6 @@ export async function POST(request: Request) {
       where: {
         id: bookingId,
         guestId: session.user.id
-      },
-      include: {
-        listing: {
-          include: {
-            host: true
-          }
-        }
       }
     })
 
@@ -51,10 +44,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // Calculate amounts (booking.amount already includes 4% platform fee)
-    const totalCents = Math.round(booking.amount * 100)
-    const platformFeeCents = Math.round(booking.platformFee * 100)
-    const hostPayoutCents = totalCents - platformFeeCents
+    // Calculate amounts using stored cents values
+    const totalCents = booking.totalAmount
+    const platformFeeCents = booking.platformFee
+    const totalDollars = totalCents / 100
 
     let paymentResult
     let processorUsed = processor
@@ -62,7 +55,7 @@ export async function POST(request: Request) {
     try {
       if (processor === 'braintree') {
         paymentResult = await authorizeBraintreePayment({
-          amount: totalCents,
+          amount: totalDollars,
           paymentMethodNonce,
           customerId: session.user.id
         })
@@ -82,13 +75,21 @@ export async function POST(request: Request) {
     }
 
     // Create FeeTransaction record for platform fee
+    const transactionId = 'transactionId' in paymentResult 
+      ? paymentResult.transactionId 
+      : paymentResult.paymentId
+
     const feeTransaction = await prisma.feeTransaction.create({
       data: {
         bookingId: booking.id,
-        amount: booking.platformFee,
-        status: 'PENDING',
-        processor: processorUsed,
-        transactionId: paymentResult.paymentId || paymentResult.transactionId
+        type: 'PLATFORM_FEE',
+        processor: processorUsed === 'braintree' ? 'BRAINTREE' : 'SQUARE',
+        bookingTotal: totalCents,
+        platformFee: platformFeeCents,
+        hostPayout: totalCents - platformFeeCents,
+        transactionId,
+        paymentIntentId: transactionId,
+        processed: false
       }
     })
 
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
       where: { id: bookingId },
       data: {
         status: 'AUTHORIZED',
-        paymentIntentId: paymentResult.paymentId || paymentResult.transactionId,
+        paymentIntentId: transactionId,
         authorizedAt: new Date()
       }
     })
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       booking: updated,
-      paymentIntentId: paymentResult.paymentId || paymentResult.transactionId,
+      paymentIntentId: transactionId,
       processor: processorUsed,
       feeTransactionId: feeTransaction.id
     })
