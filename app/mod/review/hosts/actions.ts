@@ -82,6 +82,18 @@ export async function approveApplication(
       data: { role: 'HOST' }
     })
 
+    // Send approval email
+    try {
+      const { sendHostApplicationStatusEmail } = await import('@/lib/email')
+      await sendHostApplicationStatusEmail(
+        application.user.email,
+        'approved',
+        reviewNotes
+      )
+    } catch (emailError) {
+      console.error('Failed to send approval email:', emailError)
+    }
+
     revalidatePath('/mod/review/hosts')
     return { success: true }
   } catch (error) {

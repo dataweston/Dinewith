@@ -30,6 +30,45 @@ export async function createBookingRequest(data: {
       return { error: 'Listing not available' }
     }
 
+    // Check for booking conflicts
+    const conflictingBookings = await prisma.booking.findMany({
+      where: {
+        listingId: data.listingId,
+        status: {
+          in: ['REQUESTED', 'ACCEPTED', 'AUTHORIZED']
+        },
+        OR: [
+          {
+            AND: [
+              { scheduledStart: { lte: data.scheduledStart } },
+              { scheduledEnd: { gt: data.scheduledStart } }
+            ]
+          },
+          {
+            AND: [
+              { scheduledStart: { lt: data.scheduledEnd } },
+              { scheduledEnd: { gte: data.scheduledEnd } }
+            ]
+          },
+          {
+            AND: [
+              { scheduledStart: { gte: data.scheduledStart } },
+              { scheduledEnd: { lte: data.scheduledEnd } }
+            ]
+          }
+        ]
+      }
+    })
+
+    if (conflictingBookings.length > 0) {
+      return { error: 'This time slot is already booked or pending' }
+    }
+
+    // Validate guest count
+    if (data.guestCount > listing.maxGuests) {
+      return { error: `Maximum ${listing.maxGuests} guest${listing.maxGuests > 1 ? 's' : ''} allowed` }
+    }
+
     // Calculate pricing
     const totalAmount = listing.priceAmount * data.guestCount
     const platformFee = Math.round(totalAmount * PLATFORM_FEE_PERCENT)
@@ -92,6 +131,19 @@ export async function acceptBooking(bookingId: string) {
       where: { id: bookingId },
       data: { status: 'ACCEPTED' }
     })
+
+    // Send email notification to guest
+    try {
+      const { sendBookingAcceptedEmail } = await import('@/lib/email')
+      await sendBookingAcceptedEmail(
+        booking.guest.email,
+        booking.listing.hostProfile.displayName,
+        booking.listing.title,
+        `${new Date(booking.scheduledStart).toLocaleString()} - ${new Date(booking.scheduledEnd).toLocaleString()}`
+      )
+    } catch (emailError) {
+      console.error('Failed to send booking accepted email:', emailError)
+    }
 
     revalidatePath('/host/bookings')
     return { booking: updated }

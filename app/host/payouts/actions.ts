@@ -176,8 +176,27 @@ export async function processPayout(payoutId: string, transferId?: string) {
         transferId,
         processedAt: new Date(),
         completedAt: new Date()
+      },
+      include: {
+        hostProfile: {
+          include: {
+            user: true
+          }
+        }
       }
     })
+
+    // Send payout completed email
+    try {
+      const { sendPayoutCompletedEmail } = await import('@/lib/email')
+      await sendPayoutCompletedEmail(
+        payout.hostProfile.user.email,
+        payout.amount,
+        payout.currency
+      )
+    } catch (emailError) {
+      console.error('Failed to send payout email:', emailError)
+    }
 
     revalidatePath('/admin/payouts')
     return { payout }
