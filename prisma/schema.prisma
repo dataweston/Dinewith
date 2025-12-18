@@ -200,6 +200,7 @@ model Listing {
   
   availability  Availability[]
   bookings      Booking[]
+  reviews       Review[]
   
   @@index([status])
   @@index([type])
@@ -278,6 +279,7 @@ model Booking {
   updatedAt       DateTime      @updatedAt
   
   messages        Message[]
+  review          Review?
   
   @@index([listingId])
   @@index([guestId])
@@ -463,4 +465,81 @@ model Report {
   @@index([reportedUserId])
   @@index([listingId])
   @@index([streamId])
+}
+
+// Reviews & Ratings
+
+model Review {
+  id              String        @id @default(cuid())
+  bookingId       String        @unique
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  listingId       String
+  listing         Listing       @relation(fields: [listingId], references: [id])
+  
+  reviewerId      String
+  hostProfileId   String
+  
+  rating          Int           // 1-5 stars
+  comment         String?       @db.Text
+  
+  // Review aspects
+  communicationRating Int?      // 1-5
+  experienceRating    Int?      // 1-5
+  valueRating         Int?      // 1-5
+  
+  // Moderation
+  isPublished     Boolean       @default(true)
+  flaggedAt       DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([listingId])
+  @@index([reviewerId])
+  @@index([hostProfileId])
+  @@index([rating])
+  @@index([isPublished])
+}
+
+// Payouts & Host Earnings
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+model Payout {
+  id              String        @id @default(cuid())
+  hostProfileId   String
+  
+  // Amount in cents
+  amount          Int
+  currency        String        @default("USD")
+  
+  // Status tracking
+  status          PayoutStatus  @default(PENDING)
+  
+  // Stripe Connect or similar integration
+  accountId       String?       // External account ID (e.g., Stripe Connect)
+  transferId      String?       // External transfer ID
+  
+  // Time tracking
+  requestedAt     DateTime      @default(now())
+  processedAt     DateTime?
+  completedAt     DateTime?
+  failedAt        DateTime?
+  
+  // Metadata
+  notes           String?       @db.Text
+  failureReason   String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  @@index([hostProfileId])
+  @@index([status])
+  @@index([requestedAt])
 }

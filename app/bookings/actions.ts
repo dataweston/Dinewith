@@ -209,3 +209,238 @@ export async function getHostBookings() {
     return { error: 'Failed to fetch bookings' }
   }
 }
+
+export async function completeBooking(bookingId: string) {
+  const session = (await auth()) as Session
+
+  if (!session?.user?.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        listing: {
+          include: { hostProfile: true }
+        }
+      }
+    })
+
+    if (!booking) {
+      return { error: 'Booking not found' }
+    }
+
+    if (booking.listing.hostProfile.userId !== session.user.id) {
+      return { error: 'Unauthorized' }
+    }
+
+    if (booking.status !== 'AUTHORIZED' && booking.status !== 'ACCEPTED') {
+      return { error: 'Booking cannot be completed in current status' }
+    }
+
+    // Capture payment if authorized
+    let captureSuccess = false
+    if (booking.status === 'AUTHORIZED' && booking.paymentIntentId) {
+      try {
+        const captureResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/payments/capture`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: booking.id,
+            paymentIntentId: booking.paymentIntentId,
+            amount: booking.totalAmount
+          })
+        })
+
+        if (captureResponse.ok) {
+          captureSuccess = true
+        }
+      } catch (captureError) {
+        console.error('Payment capture failed:', captureError)
+        return { error: 'Failed to capture payment' }
+      }
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: 'COMPLETED',
+        capturedAt: captureSuccess ? new Date() : booking.capturedAt
+      }
+    })
+
+    revalidatePath('/host/bookings')
+    return { booking: updated }
+  } catch (error) {
+    console.error('Error completing booking:', error)
+    return { error: 'Failed to complete booking' }
+  }
+}
+
+export async function markNoShow(bookingId: string) {
+  const session = (await auth()) as Session
+
+  if (!session?.user?.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        listing: {
+          include: { hostProfile: true }
+        }
+      }
+    })
+
+    if (!booking) {
+      return { error: 'Booking not found' }
+    }
+
+    if (booking.listing.hostProfile.userId !== session.user.id) {
+      return { error: 'Unauthorized' }
+    }
+
+    if (booking.status !== 'AUTHORIZED' && booking.status !== 'ACCEPTED') {
+      return { error: 'Invalid booking status' }
+    }
+
+    // For no-show, capture full payment (host keeps 100% per refund policy)
+    if (booking.paymentIntentId && booking.status === 'AUTHORIZED') {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/payments/capture`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: booking.id,
+            paymentIntentId: booking.paymentIntentId,
+            amount: booking.totalAmount
+          })
+        })
+      } catch (captureError) {
+        console.error('Payment capture failed:', captureError)
+      }
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: 'NO_SHOW',
+        capturedAt: new Date()
+      }
+    })
+
+    revalidatePath('/host/bookings')
+    return { booking: updated }
+  } catch (error) {
+    console.error('Error marking no-show:', error)
+    return { error: 'Failed to mark as no-show' }
+  }
+}
+
+export async function createReview(data: {
+  bookingId: string
+  rating: number
+  comment?: string
+  communicationRating?: number
+  experienceRating?: number
+  valueRating?: number
+}) {
+  const session = (await auth()) as Session
+
+  if (!session?.user?.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    // Validate rating
+    if (data.rating < 1 || data.rating > 5) {
+      return { error: 'Rating must be between 1 and 5' }
+    }
+
+    // Get booking and verify guest
+    const booking = await prisma.booking.findUnique({
+      where: { id: data.bookingId },
+      include: {
+        listing: {
+          include: { hostProfile: true }
+        },
+        review: true
+      }
+    })
+
+    if (!booking) {
+      return { error: 'Booking not found' }
+    }
+
+    if (booking.guestId !== session.user.id) {
+      return { error: 'Unauthorized' }
+    }
+
+    if (booking.status !== 'COMPLETED') {
+      return { error: 'Can only review completed bookings' }
+    }
+
+    if (booking.review) {
+      return { error: 'Review already exists for this booking' }
+    }
+
+    const review = await prisma.review.create({
+      data: {
+        bookingId: data.bookingId,
+        listingId: booking.listingId,
+        reviewerId: session.user.id,
+        hostProfileId: booking.listing.hostProfileId,
+        rating: data.rating,
+        comment: data.comment,
+        communicationRating: data.communicationRating,
+        experienceRating: data.experienceRating,
+        valueRating: data.valueRating
+      }
+    })
+
+    revalidatePath(`/listing/${booking.listing.slug}`)
+    revalidatePath('/bookings')
+    return { review }
+  } catch (error) {
+    console.error('Error creating review:', error)
+    return { error: 'Failed to create review' }
+  }
+}
+
+export async function getBookingForReview(bookingId: string) {
+  const session = (await auth()) as Session
+
+  if (!session?.user?.id) {
+    return { error: 'Unauthorized' }
+  }
+
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        listing: {
+          include: {
+            hostProfile: true
+          }
+        },
+        review: true
+      }
+    })
+
+    if (!booking) {
+      return { error: 'Booking not found' }
+    }
+
+    if (booking.guestId !== session.user.id) {
+      return { error: 'Unauthorized' }
+    }
+
+    return { booking }
+  } catch (error) {
+    console.error('Error fetching booking:', error)
+    return { error: 'Failed to fetch booking' }
+  }
+}

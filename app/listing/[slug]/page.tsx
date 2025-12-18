@@ -1,8 +1,10 @@
 import { getListingBySlug } from '@/app/marketplace/actions'
+import { getListingReviews } from '@/app/reviews/actions'
 import { notFound } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { ListingReviews } from '@/components/listing-reviews'
 
 export async function generateMetadata({
   params
@@ -35,6 +37,11 @@ export default async function ListingDetailPage({
   }
 
   const { listing } = result
+  
+  // Get reviews for this listing
+  const reviewsResult = await getListingReviews(listing.id)
+  const reviews = 'reviews' in reviewsResult ? reviewsResult.reviews : []
+  const avgRating = 'avgRating' in reviewsResult ? reviewsResult.avgRating : null
 
   // Generate JSON-LD structured data
   const jsonLd = {
@@ -90,6 +97,9 @@ export default async function ListingDetailPage({
             <span>Hosted by {listing.hostProfile.displayName}</span>
             {listing.duration && <span>• {listing.duration} minutes</span>}
             <span>• Up to {listing.maxGuests} guests</span>
+            {avgRating && (
+              <span>• ⭐ {avgRating.toFixed(1)} ({reviews.length} reviews)</span>
+            )}
           </div>
 
           <div className="text-3xl font-bold mb-8">
@@ -134,6 +144,12 @@ export default async function ListingDetailPage({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {reviews.length > 0 && (
+          <div className="mb-8">
+            <ListingReviews reviews={reviews} avgRating={avgRating} />
           </div>
         )}
 
