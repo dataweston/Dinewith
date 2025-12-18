@@ -1,11 +1,25 @@
-import { Client, Environment, ApiError } from 'square'
+import { SquareClient, SquareEnvironment, SquareError } from 'square'
 
-const client = new Client({
-  accessToken: process.env.SQUARE_ACCESS_TOKEN!,
-  environment: process.env.SQUARE_ENVIRONMENT === 'production'
-    ? Environment.Production
-    : Environment.Sandbox,
-})
+let client: SquareClient | null = null
+
+function getClient() {
+  if (client) return client
+
+  const token = process.env.SQUARE_ACCESS_TOKEN
+  if (!token) {
+    throw new Error('Missing SQUARE_ACCESS_TOKEN')
+  }
+
+  client = new SquareClient({
+    token,
+    environment:
+      process.env.SQUARE_ENVIRONMENT === 'production'
+        ? SquareEnvironment.Production
+        : SquareEnvironment.Sandbox,
+  })
+
+  return client
+}
 
 export async function authorizeSquarePayment(data: {
   amount: number // in cents
@@ -32,7 +46,7 @@ export async function authorizeSquarePayment(data: {
     }
   } catch (error) {
     console.error('Square authorization error:', error)
-    if (error instanceof ApiError) {
+    if (error instanceof SquareError) {
       throw new Error(error.errors?.[0]?.detail || 'Payment failed')
     }
     throw error
@@ -52,7 +66,7 @@ export async function captureSquarePayment(paymentId: string) {
     }
   } catch (error) {
     console.error('Square capture error:', error)
-    if (error instanceof ApiError) {
+    if (error instanceof SquareError) {
       throw new Error(error.errors?.[0]?.detail || 'Capture failed')
     }
     throw error
@@ -83,7 +97,7 @@ export async function refundSquarePayment(data: {
     }
   } catch (error) {
     console.error('Square refund error:', error)
-    if (error instanceof ApiError) {
+    if (error instanceof SquareError) {
       throw new Error(error.errors?.[0]?.detail || 'Refund failed')
     }
     throw error
