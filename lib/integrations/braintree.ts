@@ -1,17 +1,29 @@
 import braintree from 'braintree'
 
-const gateway = new braintree.BraintreeGateway({
-  environment: process.env.BRAINTREE_ENVIRONMENT === 'production'
-    ? braintree.Environment.Production
-    : braintree.Environment.Sandbox,
-  merchantId: process.env.BRAINTREE_MERCHANT_ID!,
-  publicKey: process.env.BRAINTREE_PUBLIC_KEY!,
-  privateKey: process.env.BRAINTREE_PRIVATE_KEY!,
-})
+// Lazy-initialize the gateway to avoid build-time errors when env vars are missing
+let gateway: braintree.BraintreeGateway | null = null
+
+function getGateway() {
+  if (!gateway) {
+    if (!process.env.BRAINTREE_MERCHANT_ID || !process.env.BRAINTREE_PUBLIC_KEY || !process.env.BRAINTREE_PRIVATE_KEY) {
+      throw new Error('Braintree credentials are not configured')
+    }
+    
+    gateway = new braintree.BraintreeGateway({
+      environment: process.env.BRAINTREE_ENVIRONMENT === 'production'
+        ? braintree.Environment.Production
+        : braintree.Environment.Sandbox,
+      merchantId: process.env.BRAINTREE_MERCHANT_ID,
+      publicKey: process.env.BRAINTREE_PUBLIC_KEY,
+      privateKey: process.env.BRAINTREE_PRIVATE_KEY,
+    })
+  }
+  return gateway
+}
 
 export async function createBraintreeClientToken() {
   try {
-    const response = await gateway.clientToken.generate({})
+    const response = await getGateway().clientToken.generate({})
     return response.clientToken
   } catch (error) {
     console.error('Braintree client token error:', error)
@@ -25,7 +37,7 @@ export async function authorizeBraintreePayment(data: {
   customerId?: string
 }) {
   try {
-    const result = await gateway.transaction.sale({
+    const result = await getGateway().transaction.sale({
       amount: data.amount.toFixed(2),
       paymentMethodNonce: data.paymentMethodNonce,
       options: {
@@ -51,7 +63,7 @@ export async function authorizeBraintreePayment(data: {
 
 export async function captureBraintreePayment(transactionId: string) {
   try {
-    const result = await gateway.transaction.submitForSettlement(transactionId)
+    const result = await getGateway().transaction.submitForSettlement(transactionId)
 
     if (!result.success) {
       throw new Error(result.message || 'Capture failed')
@@ -71,8 +83,8 @@ export async function captureBraintreePayment(transactionId: string) {
 export async function refundBraintreePayment(transactionId: string, amount?: number) {
   try {
     const result = amount
-      ? await gateway.transaction.refund(transactionId, amount.toFixed(2))
-      : await gateway.transaction.refund(transactionId)
+      ? await getGateway().transaction.refund(transactionId, amount.toFixed(2))
+      : await getGateway().transaction.refund(transactionId)
 
     if (!result.success) {
       throw new Error(result.message || 'Refund failed')
