@@ -111,6 +111,12 @@ export async function acceptBooking(bookingId: string) {
       include: {
         listing: {
           include: { hostProfile: true }
+        },
+        guest: {
+          select: {
+            email: true,
+            name: true
+          }
         }
       }
     })
@@ -133,16 +139,20 @@ export async function acceptBooking(bookingId: string) {
     })
 
     // Send email notification to guest
-    try {
-      const { sendBookingAcceptedEmail } = await import('@/lib/email')
-      await sendBookingAcceptedEmail(
-        booking.guest.email,
-        booking.listing.hostProfile.displayName,
-        booking.listing.title,
-        `${new Date(booking.scheduledStart).toLocaleString()} - ${new Date(booking.scheduledEnd).toLocaleString()}`
-      )
-    } catch (emailError) {
-      console.error('Failed to send booking accepted email:', emailError)
+    if (booking.guest?.email) {
+      try {
+        const { sendBookingAcceptedEmail } = await import('@/lib/email')
+        await sendBookingAcceptedEmail(
+          booking.guest.email,
+          booking.listing.hostProfile.displayName,
+          booking.listing.title,
+          `${new Date(booking.scheduledStart).toLocaleString()} - ${new Date(booking.scheduledEnd).toLocaleString()}`
+        )
+      } catch (emailError) {
+        console.error('Failed to send booking accepted email:', emailError)
+      }
+    } else {
+      console.warn('Guest email missing for booking', booking.id)
     }
 
     revalidatePath('/host/bookings')

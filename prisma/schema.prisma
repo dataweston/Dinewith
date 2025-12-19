@@ -148,6 +148,7 @@ model HostProfile {
   updatedAt   DateTime  @updatedAt
   
   listings    Listing[]
+  payouts     Payout[]
   
   @@index([isActive])
 }
@@ -514,6 +515,7 @@ enum PayoutStatus {
 model Payout {
   id              String        @id @default(cuid())
   hostProfileId   String
+  hostProfile     HostProfile   @relation(fields: [hostProfileId], references: [id], onDelete: Cascade)
   
   // Amount in cents
   amount          Int

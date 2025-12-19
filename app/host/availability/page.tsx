@@ -47,15 +47,30 @@ export default async function HostAvailabilityPage() {
   }
 
   return (
-    <div className="container py-8">
-      <div className="mb-8">
+    <div className="container py-8 space-y-8">
+      <div>
         <h1 className="text-3xl font-bold mb-2">Manage Availability</h1>
         <p className="text-muted-foreground">
           Set when you&apos;re available for bookings
         </p>
       </div>
 
-      <AvailabilityManager listings={listings} />
+      {listings.map(listing => (
+        <section key={listing.id} className="border rounded-xl p-6 space-y-6">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-2xl font-semibold">{listing.title}</h2>
+            <p className="text-sm text-muted-foreground">
+              {listing.city && listing.state
+                ? `${listing.city}, ${listing.state}`
+                : 'Virtual experience'}
+            </p>
+          </div>
+          <AvailabilityManager
+            listingId={listing.id}
+            initialAvailability={listing.availability}
+          />
+        </section>
+      ))}
     </div>
   )
 }

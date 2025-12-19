@@ -40,8 +40,11 @@ export default async function ListingDetailPage({
   
   // Get reviews for this listing
   const reviewsResult = await getListingReviews(listing.id)
-  const reviews = 'reviews' in reviewsResult ? reviewsResult.reviews : []
-  const avgRating = 'avgRating' in reviewsResult ? reviewsResult.avgRating : null
+  const reviewData =
+    'error' in reviewsResult
+      ? { reviews: [], avgRating: 0, count: 0 }
+      : reviewsResult
+  const hasReviews = reviewData.count > 0
 
   // Generate JSON-LD structured data
   const jsonLd = {
@@ -97,8 +100,10 @@ export default async function ListingDetailPage({
             <span>Hosted by {listing.hostProfile.displayName}</span>
             {listing.duration && <span>• {listing.duration} minutes</span>}
             <span>• Up to {listing.maxGuests} guests</span>
-            {avgRating && (
-              <span>• ⭐ {avgRating.toFixed(1)} ({reviews.length} reviews)</span>
+            {hasReviews && (
+              <span>
+                • ⭐ {reviewData.avgRating.toFixed(1)} ({reviewData.count} reviews)
+              </span>
             )}
           </div>
 
@@ -147,11 +152,13 @@ export default async function ListingDetailPage({
           </div>
         )}
 
-        {reviews.length > 0 && (
-          <div className="mb-8">
-            <ListingReviews reviews={reviews} avgRating={avgRating} />
-          </div>
-        )}
+        <div className="mb-8">
+          <ListingReviews
+            reviews={reviewData.reviews}
+            averageRating={reviewData.avgRating}
+            totalReviews={reviewData.count}
+          />
+        </div>
 
         <div className="border rounded-lg p-6">
           <Link href={`/listing/${listing.slug}/book`}>

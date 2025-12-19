@@ -40,7 +40,7 @@ export function PayoutRequestForm({ maxAmount }: PayoutRequestFormProps) {
 
     setIsSubmitting(false)
 
-    if (result.error) {
+    if ('error' in result) {
       toast.error(result.error)
     } else {
       toast.success('Payout requested successfully!')
