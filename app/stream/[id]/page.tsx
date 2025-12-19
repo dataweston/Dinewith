@@ -1,4 +1,5 @@
 import { auth } from '@/auth'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { Session } from '@/lib/types'
 import { prisma } from '@/lib/prisma'
@@ -76,13 +77,15 @@ export default async function StreamPage({ params }: { params: { id: string } })
             <h3 className="font-semibold mb-3">Host</h3>
             <div className="flex items-center gap-3">
               {stream.host.hostProfile?.avatar ? (
-                <img 
-                  src={stream.host.hostProfile.avatar} 
-                  alt={stream.host.hostProfile.displayName}
-                  className="w-12 h-12 rounded-full"
+                <Image
+                  src={stream.host.hostProfile.avatar}
+                  alt={stream.host.hostProfile.displayName ?? 'Host avatar'}
+                  width={48}
+                  height={48}
+                  className="size-12 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                <div className="size-12 rounded-full bg-gray-200 flex items-center justify-center">
                   <span className="text-xl">👤</span>
                 </div>
               )}

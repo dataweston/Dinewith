@@ -181,7 +181,7 @@ export function AvailabilityManager({
         </h2>
         {initialAvailability.length === 0 ? (
           <p className="text-muted-foreground">
-            No availability set. Add availability slots above to let guests know when you're
+            No availability set. Add availability slots above to let guests know when you&apos;re
             available.
           </p>
         ) : (

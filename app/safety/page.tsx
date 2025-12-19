@@ -141,7 +141,7 @@ export default function SafetyHubPage() {
             If you encounter content or behavior that violates our guidelines, please report it immediately:
           </p>
           <ol className="space-y-3 list-decimal list-inside">
-            <li>Click the "Report" button on any listing, stream, message, or user profile</li>
+            <li>Click the &quot;Report&quot; button on any listing, stream, message, or user profile</li>
             <li>Select the reason for your report</li>
             <li>Provide a detailed description of the issue</li>
             <li>Our moderation team will review within 24 hours</li>

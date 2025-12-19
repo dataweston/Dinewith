@@ -36,7 +36,7 @@ export function StreamViewer({ stream }: { stream: Stream }) {
       <div className="aspect-video bg-gray-900 rounded-lg flex items-center justify-center text-white">
         <div className="text-center">
           <p className="text-xl mb-2">🎥</p>
-          <p>Stream hasn't started yet</p>
+          <p>Stream hasn&apos;t started yet</p>
           <p className="text-sm text-gray-400 mt-1">Check back soon!</p>
         </div>
       </div>
@@ -61,7 +61,7 @@ export function StreamViewer({ stream }: { stream: Stream }) {
     <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
       <video
         ref={videoRef}
-        className="w-full h-full"
+        className="size-full"
         controls
         autoPlay={stream.status === 'LIVE'}
       >

@@ -114,7 +114,7 @@ export default async function HomePage() {
 
             <Link href="/marketplace">
               <Button className="w-full" variant="outline">
-                Browse All Listings <IconArrowRight className="ml-2 h-4 w-4" />
+                Browse All Listings <IconArrowRight className="ml-2 size-4" />
               </Button>
             </Link>
           </div>
@@ -155,7 +155,7 @@ export default async function HomePage() {
             </div>
 
             <Button className="w-full" disabled>
-              Explore Streams <IconArrowRight className="ml-2 h-4 w-4" />
+              Explore Streams <IconArrowRight className="ml-2 size-4" />
             </Button>
           </div>
         </div>
@@ -199,7 +199,7 @@ export default async function HomePage() {
                 )}
 
                 <div className="flex items-center text-primary font-medium">
-                  Join waitlist <IconArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  Join waitlist <IconArrowRight className="ml-2 size-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </Link>
             ))}

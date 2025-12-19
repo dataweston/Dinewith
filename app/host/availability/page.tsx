@@ -36,10 +36,10 @@ export default async function HostAvailabilityPage() {
       <div className="container py-8">
         <h1 className="text-3xl font-bold mb-4">Manage Availability</h1>
         <p className="text-muted-foreground">
-          You don't have any active listings yet.{' '}
+          You don&apos;t have any active listings yet.{` `}
           <a href="/host/listings/new" className="text-primary underline">
             Create a listing
-          </a>{' '}
+          </a>{` `}
           to manage availability.
         </p>
       </div>
@@ -51,7 +51,7 @@ export default async function HostAvailabilityPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Manage Availability</h1>
         <p className="text-muted-foreground">
-          Set when you're available for bookings
+          Set when you&apos;re available for bookings
         </p>
       </div>
 
