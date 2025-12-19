@@ -1,5 +1,3 @@
-'use server'
-
 interface Review {
   id: string
   rating: number
