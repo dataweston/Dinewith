@@ -1,6 +1,6 @@
 'use client'
 
-import { useFormState, useFormStatus } from 'react-dom'
+import { useFormState } from 'react-dom'
 import { authenticate } from '@/app/login/actions'
 import Link from 'next/link'
 import { useEffect } from 'react'
@@ -66,7 +66,12 @@ export default function LoginForm() {
             </div>
           </div>
         </div>
-        <LoginButton />
+        <button
+          type="submit"
+          className="mt-6 w-full rounded-md bg-zinc-900 px-4 py-2 text-white font-medium hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 transition-colors"
+        >
+          Sign In
+        </button>
       </div>
 
       <Link
