@@ -4,9 +4,14 @@ import crypto from 'crypto'
 const prisma = new PrismaClient()
 
 // Helper to hash passwords (matching auth.ts logic)
-function hashPassword(password) {
+async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex')
-  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex')
+  const encoder = new TextEncoder()
+  const saltedPassword = encoder.encode(password + salt)
+  const hashedPasswordBuffer = await crypto.subtle.digest('SHA-256', saltedPassword)
+  const hash = Array.from(new Uint8Array(hashedPasswordBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
   return { hash, salt }
 }
 
@@ -209,7 +214,7 @@ async function seedUsers() {
   console.log('👤 Seeding demo users...')
   
   for (const userData of demoUsers) {
-    const { hash, salt } = hashPassword(userData.password)
+    const { hash, salt } = await hashPassword(userData.password)
     await prisma.user.upsert({
       where: { email: userData.email },
       update: {},
@@ -230,7 +235,7 @@ async function seedHosts() {
   console.log('🍳 Seeding host users with profiles and listings...')
   
   for (const hostData of demoHosts) {
-    const { hash, salt } = hashPassword(hostData.user.password)
+    const { hash, salt } = await hashPassword(hostData.user.password)
     
     // Create user
     const user = await prisma.user.upsert({
