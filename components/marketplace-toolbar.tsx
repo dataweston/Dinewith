@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Search, X } from 'lucide-react'
+import { MagnifyingGlassIcon, Cross1Icon } from '@radix-ui/react-icons'
 
 export type SortOption = 'recommended' | 'price-low' | 'price-high' | 'rating'
 
@@ -81,7 +81,7 @@ export function MarketplaceToolbar({
     <div className="space-y-4">
       {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
         <Input
           type="text"
           placeholder="Search by host name, cuisine, location..."
@@ -95,7 +95,7 @@ export function MarketplaceToolbar({
             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             aria-label="Clear search"
           >
-            <X className="w-4 h-4" />
+            <Cross1Icon className="w-4 h-4" />
           </button>
         )}
       </div>
