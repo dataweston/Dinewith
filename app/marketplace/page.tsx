@@ -1,7 +1,7 @@
 import { getActiveListings } from './actions'
-import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { MarketplaceCard } from '@/components/marketplace-card'
+import { MarketplaceToolbar } from '@/components/marketplace-toolbar'
+import { CategorySection } from '@/components/marketplace-category-section'
 
 export const metadata = {
   title: 'Marketplace - Dinewith'
@@ -10,7 +10,12 @@ export const metadata = {
 export default async function MarketplacePage({
   searchParams
 }: {
-  searchParams: { type?: string; city?: string; search?: string }
+  searchParams: { 
+    type?: string
+    city?: string
+    search?: string
+    sort?: 'recommended' | 'price-low' | 'price-high' | 'rating'
+  }
 }) {
   const result = await getActiveListings(searchParams)
 
@@ -24,90 +29,107 @@ export default async function MarketplacePage({
 
   const { listings } = result
 
+  // Group listings by type for category sections
+  const groupedListings = listings.reduce(
+    (acc, listing) => {
+      const type = listing.type
+      if (!acc[type]) {
+        acc[type] = []
+      }
+      acc[type].push(listing)
+      return acc
+    },
+    {} as Record<string, typeof listings>
+  )
+
+  const typeLabels: Record<string, string> = {
+    IN_PERSON: 'In-Person Experiences',
+    VIRTUAL: 'Virtual Experiences',
+    HYBRID: 'Hybrid Experiences'
+  }
+
+  const typeDescriptions: Record<string, string> = {
+    IN_PERSON: 'Share a meal or cooking session in person',
+    VIRTUAL: 'Connect with hosts over video',
+    HYBRID: 'Choose your preferred format'
+  }
+
   return (
-    <div className="container py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Marketplace</h1>
-        <p className="text-muted-foreground">
-          Discover unique dining experiences
+    <div className="container py-12 px-4 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="mb-10">
+        <h1 className="text-4xl md:text-5xl font-bold mb-2 text-gray-900">
+          Marketplace
+        </h1>
+        <p className="text-lg text-gray-600">
+          Discover unique dining experiences and connect with fascinating hosts
         </p>
       </div>
 
-      {/* Simple filters */}
-      <div className="mb-6 flex gap-2 flex-wrap">
-        <Link href="/marketplace">
-          <Button variant={!searchParams.type ? 'default' : 'outline'} size="sm">
-            All
-          </Button>
-        </Link>
-        <Link href="/marketplace?type=IN_PERSON">
-          <Button
-            variant={searchParams.type === 'IN_PERSON' ? 'default' : 'outline'}
-            size="sm"
-          >
-            In Person
-          </Button>
-        </Link>
-        <Link href="/marketplace?type=VIRTUAL">
-          <Button
-            variant={searchParams.type === 'VIRTUAL' ? 'default' : 'outline'}
-            size="sm"
-          >
-            Virtual
-          </Button>
-        </Link>
-        <Link href="/marketplace?type=HYBRID">
-          <Button
-            variant={searchParams.type === 'HYBRID' ? 'default' : 'outline'}
-            size="sm"
-          >
-            Hybrid
-          </Button>
-        </Link>
+      {/* Toolbar */}
+      <div className="mb-12">
+        <MarketplaceToolbar
+          currentType={searchParams.type || null}
+          currentSort={(searchParams.sort as any) || 'recommended'}
+          currentSearch={searchParams.search || ''}
+        />
       </div>
 
+      {/* Content */}
       {listings.length === 0 ? (
-        <div className="text-center py-12 border rounded-lg">
-          <p className="text-muted-foreground">
-            No listings available yet. Check back soon!
+        <div className="text-center py-16 border-2 border-dashed border-gray-300 rounded-lg">
+          <p className="text-lg text-gray-500">
+            No listings available that match your criteria. Try adjusting your filters or check back soon!
           </p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      ) : searchParams.type ? (
+        // Single type view (when filtered)
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {listings.map((listing: any) => (
-            <Link
+            <MarketplaceCard
               key={listing.id}
-              href={`/listing/${listing.slug}`}
-              className="border rounded-lg p-6 hover:shadow-lg transition-shadow"
+              id={listing.id}
+              slug={listing.slug}
+              title={listing.title}
+              hostName={listing.hostProfile.displayName}
+              hostTagline={listing.hostProfile.tagline}
+              hostAvatar={listing.hostProfile.avatar}
+              price={listing.priceAmount}
+              type={listing.type}
+              bio={listing.hostProfile.bio}
+              priceLabel={listing.duration ? `${listing.duration}min` : 'Session'}
+            />
+          ))}
+        </div>
+      ) : (
+        // Category sections (when showing all)
+        <div>
+          {(
+            ['IN_PERSON', 'VIRTUAL', 'HYBRID'] as const
+          ).map((type) => (
+            <CategorySection
+              key={type}
+              title={typeLabels[type]}
+              subtitle={typeDescriptions[type]}
+              isEmpty={!groupedListings[type] || groupedListings[type].length === 0}
             >
-              <div className="mb-4">
-                <h3 className="text-xl font-semibold mb-2">{listing.title}</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  by {listing.hostProfile.displayName}
-                </p>
-                <div className="flex gap-2 mb-2">
-                  <Badge variant="outline">{listing.type.replace('_', ' ')}</Badge>
-                  {listing.city && (
-                    <Badge variant="outline">{listing.city}</Badge>
-                  )}
-                </div>
-              </div>
-
-              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                {listing.content}
-              </p>
-
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold">
-                  ${(listing.priceAmount / 100).toFixed(2)}
-                </span>
-                {listing.duration && (
-                  <span className="text-sm text-muted-foreground">
-                    {listing.duration} min
-                  </span>
-                )}
-              </div>
-            </Link>
+              {groupedListings[type] &&
+                groupedListings[type].map((listing: any) => (
+                  <MarketplaceCard
+                    key={listing.id}
+                    id={listing.id}
+                    slug={listing.slug}
+                    title={listing.title}
+                    hostName={listing.hostProfile.displayName}
+                    hostTagline={listing.hostProfile.tagline}
+                    hostAvatar={listing.hostProfile.avatar}
+                    price={listing.priceAmount}
+                    type={listing.type}
+                    bio={listing.hostProfile.bio}
+                    priceLabel={listing.duration ? `${listing.duration}min` : 'Session'}
+                  />
+                ))}
+            </CategorySection>
           ))}
         </div>
       )}

@@ -8,6 +8,7 @@ export async function getActiveListings(filters?: {
   search?: string
   minPrice?: number
   maxPrice?: number
+  sort?: 'recommended' | 'price-low' | 'price-high' | 'rating'
 }) {
   try {
     const where: any = {
@@ -28,7 +29,8 @@ export async function getActiveListings(filters?: {
     if (filters?.search) {
       where.OR = [
         { title: { contains: filters.search, mode: 'insensitive' } },
-        { content: { contains: filters.search, mode: 'insensitive' } }
+        { content: { contains: filters.search, mode: 'insensitive' } },
+        { hostProfile: { displayName: { contains: filters.search, mode: 'insensitive' } } }
       ]
     }
 
@@ -40,6 +42,23 @@ export async function getActiveListings(filters?: {
       where.priceAmount = { ...where.priceAmount, lte: filters.maxPrice }
     }
 
+    // Determine sort order
+    let orderBy: any = [
+      { publishedAt: 'desc' },
+      { createdAt: 'desc' }
+    ]
+
+    if (filters?.sort === 'price-low') {
+      orderBy = { priceAmount: 'asc' }
+    } else if (filters?.sort === 'price-high') {
+      orderBy = { priceAmount: 'desc' }
+    } else if (filters?.sort === 'rating') {
+      orderBy = [
+        { bookingCount: 'desc' },
+        { viewCount: 'desc' }
+      ]
+    }
+
     const listings = await prisma.listing.findMany({
       where,
       include: {
@@ -47,14 +66,13 @@ export async function getActiveListings(filters?: {
           select: {
             displayName: true,
             avatar: true,
+            bio: true,
+            tagline: true,
             cuisines: true
           }
         }
       },
-      orderBy: [
-        { publishedAt: 'desc' },
-        { createdAt: 'desc' }
-      ]
+      orderBy
     })
 
     return { listings }
