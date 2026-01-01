@@ -1,14 +1,14 @@
 import { PrismaClient } from '@prisma/client'
-import crypto from 'crypto'
+import crypto, { webcrypto } from 'crypto'
 
 const prisma = new PrismaClient()
 
 // Helper to hash passwords (matching auth.ts logic)
 async function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex')
+  const salt = crypto.randomUUID()
   const encoder = new TextEncoder()
   const saltedPassword = encoder.encode(password + salt)
-  const hashedPasswordBuffer = await crypto.subtle.digest('SHA-256', saltedPassword)
+  const hashedPasswordBuffer = await webcrypto.subtle.digest('SHA-256', saltedPassword)
   const hash = Array.from(new Uint8Array(hashedPasswordBuffer))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('')
