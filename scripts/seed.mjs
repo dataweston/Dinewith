@@ -217,13 +217,18 @@ async function seedUsers() {
     const { hash, salt } = await hashPassword(userData.password)
     await prisma.user.upsert({
       where: { email: userData.email },
-      update: {},
+      update: {
+        name: userData.name,
+        role: userData.role,
+        password: hash,
+        salt
+      },
       create: {
         email: userData.email,
         name: userData.name,
         role: userData.role,
         password: hash,
-        salt: salt
+        salt
       }
     })
   }
@@ -237,16 +242,21 @@ async function seedHosts() {
   for (const hostData of demoHosts) {
     const { hash, salt } = await hashPassword(hostData.user.password)
     
-    // Create user
+    // Create or update user
     const user = await prisma.user.upsert({
       where: { email: hostData.user.email },
-      update: {},
+      update: {
+        name: hostData.user.name,
+        role: hostData.user.role,
+        password: hash,
+        salt
+      },
       create: {
         email: hostData.user.email,
         name: hostData.user.name,
         role: hostData.user.role,
         password: hash,
-        salt: salt
+        salt
       }
     })
     
